@@ -1,6 +1,6 @@
 # Premier League Challenge: project rules
 
-Solo-led entry for the Microsoft Inside the Game hackathon, category **Best Multi-Agent System**.
+Team entry for the Microsoft Inside the Game hackathon, category **Best Multi-Agent System**.
 Fictional club (Redmoor FC), synthetic data only. Submission closes **Oct 27, 2026 11:59 pm PT**. Merge freeze **Oct 24**.
 
 ## Hard rules (hackathon)

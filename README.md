@@ -1,6 +1,6 @@
 # Premier League Challenge
 
-Solo entry for the Microsoft Inside the Game hackathon, targeting **Best Multi-Agent System**.
+Team entry for the Microsoft Inside the Game hackathon, targeting **Best Multi-Agent System**.
 
 Synthetic football events go through three agents built on Microsoft Agent Framework and Foundry: Analyst (stats and pivotal moments), Explainer (why it mattered) and Personalizer (rewrites for analyst or fan).
 
