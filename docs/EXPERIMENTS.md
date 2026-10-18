@@ -1,6 +1,6 @@
 # Experiments brief
 
-Goal: signals the Tactician agent can call, grounded in the bronze data. Read `CLAUDE.md` first.
+Goal: signals the Tactician agent can call, grounded in the bronze data. Read `CLAUDE.md` first. Your dated milestones are in `docs/PLAN_EXPERIMENTS.md`.
 
 ## Workflow
 1. `git pull`, then `git checkout -b exp/<name>` (never commit to `main`).

@@ -48,5 +48,10 @@ Never let an agent write to bronze or silver. Agents write only to gold (insight
 - Every claim an agent makes about the match must be checkable against the data. No invented facts.
 - Tools needing a human decision use `@tool(approval_mode="always_require")`.
 
+## Ownership
+Two tracks work independently; see `docs/PLAN_LEAD.md` and `docs/PLAN_EXPERIMENTS.md`.
+- **Experiments track:** only `src/plc/experiments/**`, `tests/test_exp_*.py`, `docs/experiments/*.md`.
+- **Lead track:** everything else. Cross-track changes go through an issue titled `request: ...`.
+
 ## Config
 `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL` (chat agents); `FOUNDRY_RESOURCE_ENDPOINT`, `DECISION_DEPLOYMENT` (Decision-1). Without them the demo runs offline on the heuristic.
