@@ -37,6 +37,8 @@ Data moves one way: bronze, then silver, then gold. Each layer reads only from t
 - **Fabric (planned, after agents work):** Eventstream lands raw events into **bronze** tables in an Eventhouse (KQL). Update policies and materialized views derive **silver** and **gold**. Activator rules fire on gold. Historical and training data use a Lakehouse with the same three layers.
 - **Foundry:** Foundry has no medallion concept; this is our convention. Agents and Decision-1 read **gold only**. The Fact-checker may query **silver** (and bronze for provenance) to verify a claim, and must cite the layer and query it used.
 
+**Bronze dataset:** `uv run python -m plc dataset` writes `data/bronze/*.csv` (seed 0 is committed): wearables, training, injuries, 15 matches, opponents. Regenerate rather than hand-edit.
+
 Naming: `bronze_<entity>`, `silver_<entity>`, `gold_<entity>` for tables and KQL functions.
 Never let an agent write to bronze or silver. Agents write only to gold (insights) and opponent memory.
 

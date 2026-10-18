@@ -18,11 +18,13 @@ class Event:
     detail: dict
 
 
-def generate_match(seed: int = 0, home: str = "Reds", away: str = "Blues", n: int = 60, home_players: list[str] | None = None) -> list[Event]:
+def generate_match(seed: int = 0, home: str = "Reds", away: str = "Blues", n: int = 60, home_players: list[str] | None = None, away_players: list[str] | None = None) -> list[Event]:
     rng = random.Random(seed)
     squads = {t: [f"{t} #{i}" for i in range(1, 12)] for t in (home, away)}
     if home_players:
         squads[home] = home_players
+    if away_players:
+        squads[away] = away_players
     events = []
     for minute in sorted(rng.randint(1, 90) for _ in range(n)):
         team = rng.choice([home, away])
