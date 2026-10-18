@@ -1,44 +1,60 @@
 player,date,type,area,severity,days_out,context,minute,recurrence,ingest_ts
-Petrov,2023-07-20,ankle sprain,ankle,moderate,34,history,,0,2023-07-20T23:59:00Z
-Kimura,2023-09-12,concussion,head,minor,3,history,,0,2023-09-12T23:59:00Z
-Vance,2024-01-11,metatarsal fracture,foot,severe,100,history,,0,2024-01-11T23:59:00Z
-Novak,2024-02-16,knee ligament sprain,knee,severe,120,history,,0,2024-02-16T23:59:00Z
-Calder,2024-02-21,metatarsal fracture,foot,severe,63,history,,0,2024-02-21T23:59:00Z
-Adeyemi,2024-03-19,knee ligament sprain,knee,severe,62,history,,0,2024-03-19T23:59:00Z
-Marlow,2024-03-30,hamstring strain,thigh,minor,10,history,,0,2024-03-30T23:59:00Z
-Kimura,2024-05-30,muscle fatigue,calf,minor,8,history,,0,2024-05-30T23:59:00Z
-Quinn,2024-07-28,quadriceps contusion,thigh,minor,4,history,,0,2024-07-28T23:59:00Z
-Calder,2024-09-19,metatarsal fracture,foot,severe,80,history,,0,2024-09-19T23:59:00Z
-Haas,2024-10-09,hamstring strain,thigh,minor,6,history,,0,2024-10-09T23:59:00Z
-Mbeki,2024-11-05,ankle sprain,ankle,moderate,18,history,,0,2024-11-05T23:59:00Z
-Marlow,2024-12-05,hamstring strain,thigh,minor,3,history,,0,2024-12-05T23:59:00Z
-Mbeki,2024-12-15,hamstring strain,thigh,moderate,15,history,,0,2024-12-15T23:59:00Z
-Novak,2025-04-09,quadriceps contusion,thigh,minor,3,history,,0,2025-04-09T23:59:00Z
-Vance,2025-04-21,quadriceps contusion,thigh,minor,5,history,,0,2025-04-21T23:59:00Z
-Haas,2025-05-26,muscle fatigue,calf,minor,4,history,,0,2025-05-26T23:59:00Z
-Petrov,2025-08-08,quadriceps contusion,thigh,minor,4,history,,0,2025-08-08T23:59:00Z
-Ferreira,2025-09-10,groin strain,groin,moderate,14,history,,0,2025-09-10T23:59:00Z
-Marlow,2025-10-26,metatarsal fracture,foot,severe,111,history,,0,2025-10-26T23:59:00Z
-Moretti,2026-02-10,ankle sprain,ankle,moderate,28,history,,0,2026-02-10T23:59:00Z
-Moretti,2026-03-17,concussion,head,minor,9,history,,0,2026-03-17T23:59:00Z
-Novak,2026-05-21,hamstring strain,thigh,minor,5,history,,0,2026-05-21T23:59:00Z
-Ibarra,2026-06-20,metatarsal fracture,foot,severe,118,history,,0,2026-06-20T23:59:00Z
-Brandt,2026-07-29,hamstring strain,thigh,minor,6,match,87,0,2026-07-29T23:59:00Z
-Sato,2026-08-02,hamstring strain,thigh,moderate,20,match,19,0,2026-08-02T23:59:00Z
-Moretti,2026-08-11,hamstring strain,thigh,minor,7,training,,0,2026-08-11T23:59:00Z
-Quinn,2026-08-11,quadriceps contusion,thigh,minor,5,training,,1,2026-08-11T23:59:00Z
-Dubois,2026-08-19,muscle fatigue,calf,minor,6,training,,0,2026-08-19T23:59:00Z
-Brandt,2026-08-22,concussion,head,minor,9,match,81,0,2026-08-22T23:59:00Z
-Novak,2026-09-12,metatarsal fracture,foot,severe,61,match,37,0,2026-09-12T23:59:00Z
-Dubois,2026-09-12,calf strain,calf,minor,5,match,78,1,2026-09-12T23:59:00Z
-Marlow,2026-09-16,calf strain,calf,minor,10,match,28,0,2026-09-16T23:59:00Z
-Haas,2026-09-24,groin strain,groin,moderate,19,training,,0,2026-09-24T23:59:00Z
-Moretti,2026-09-26,hamstring strain,thigh,minor,9,match,80,1,2026-09-26T23:59:00Z
-Petrov,2026-09-28,groin strain,groin,moderate,32,training,,0,2026-09-28T23:59:00Z
-Ibarra,2026-09-30,concussion,head,minor,8,match,74,0,2026-09-30T23:59:00Z
-Salah-Reyes,2026-10-05,muscle fatigue,calf,minor,7,training,,0,2026-10-05T23:59:00Z
-Calder,2026-10-07,muscle fatigue,calf,minor,3,match,55,0,2026-10-07T23:59:00Z
-Duarte,2026-10-07,calf strain,calf,minor,7,match,49,0,2026-10-07T23:59:00Z
-Quinn,2026-10-09,groin strain,groin,moderate,29,training,,0,2026-10-09T23:59:00Z
-Marlow,2026-10-14,calf strain,calf,minor,4,match,38,1,2026-10-14T23:59:00Z
-Vance,2026-10-14,hamstring strain,thigh,moderate,20,match,64,1,2026-10-14T23:59:00Z
+Kimura,2023-07-19,knee ligament sprain,knee,severe,116,history,,0,2023-07-19T23:59:00Z
+Brandt,2023-07-24,hamstring strain,thigh,minor,9,history,,0,2023-07-24T23:59:00Z
+Quinn,2023-07-29,hamstring strain,thigh,minor,4,history,,0,2023-07-29T23:59:00Z
+Bergstrom,2023-08-21,metatarsal fracture,foot,severe,83,history,,0,2023-08-21T23:59:00Z
+Petrov,2023-09-06,calf strain,calf,minor,4,history,,0,2023-09-06T23:59:00Z
+Ibarra,2023-10-13,quadriceps contusion,thigh,minor,4,history,,0,2023-10-13T23:59:00Z
+Quinn,2023-10-31,concussion,head,minor,7,history,,0,2023-10-31T23:59:00Z
+Duarte,2023-11-25,hamstring strain,thigh,minor,6,history,,0,2023-11-25T23:59:00Z
+Petrov,2023-12-09,hamstring strain,thigh,moderate,30,history,,0,2023-12-09T23:59:00Z
+Ibarra,2024-01-29,hamstring strain,thigh,minor,10,history,,0,2024-01-29T23:59:00Z
+Nakamura-Hale,2024-01-29,muscle fatigue,calf,minor,4,history,,0,2024-01-29T23:59:00Z
+Thorne,2024-02-05,concussion,head,minor,6,history,,0,2024-02-05T23:59:00Z
+Nakamura-Hale,2024-02-16,calf strain,calf,minor,7,history,,0,2024-02-16T23:59:00Z
+Moretti,2024-02-22,quadriceps contusion,thigh,minor,7,history,,0,2024-02-22T23:59:00Z
+Kimura,2024-03-11,metatarsal fracture,foot,severe,69,history,,0,2024-03-11T23:59:00Z
+Teixeira,2024-04-16,metatarsal fracture,foot,severe,114,history,,0,2024-04-16T23:59:00Z
+Osei,2024-04-25,groin strain,groin,moderate,27,history,,0,2024-04-25T23:59:00Z
+Larsen,2024-05-12,ankle sprain,ankle,moderate,19,history,,0,2024-05-12T23:59:00Z
+Salah-Reyes,2024-07-30,metatarsal fracture,foot,severe,90,history,,0,2024-07-30T23:59:00Z
+Volkov,2024-08-08,muscle fatigue,calf,minor,7,history,,0,2024-08-08T23:59:00Z
+Kimura,2024-08-29,metatarsal fracture,foot,severe,103,history,,0,2024-08-29T23:59:00Z
+Volkov,2024-10-09,hamstring strain,thigh,moderate,19,history,,0,2024-10-09T23:59:00Z
+Mbeki,2024-10-13,ankle sprain,ankle,moderate,15,history,,0,2024-10-13T23:59:00Z
+Delacroix,2024-11-10,ankle sprain,ankle,moderate,21,history,,0,2024-11-10T23:59:00Z
+Mbeki,2025-03-17,hamstring strain,thigh,moderate,16,history,,0,2025-03-17T23:59:00Z
+Thorne,2025-03-27,hamstring strain,thigh,minor,8,history,,0,2025-03-27T23:59:00Z
+Lindqvist,2025-04-04,calf strain,calf,minor,3,history,,0,2025-04-04T23:59:00Z
+Vance,2025-05-03,metatarsal fracture,foot,severe,100,history,,0,2025-05-03T23:59:00Z
+Thorne,2025-07-14,groin strain,groin,moderate,32,history,,0,2025-07-14T23:59:00Z
+Osei,2025-07-20,knee ligament sprain,knee,severe,63,history,,0,2025-07-20T23:59:00Z
+Sato,2025-08-05,groin strain,groin,moderate,33,history,,0,2025-08-05T23:59:00Z
+Bergstrom,2025-08-20,quadriceps contusion,thigh,minor,5,history,,0,2025-08-20T23:59:00Z
+Hartmann,2025-09-05,metatarsal fracture,foot,severe,86,history,,0,2025-09-05T23:59:00Z
+Dubois,2025-11-18,muscle fatigue,calf,minor,5,history,,0,2025-11-18T23:59:00Z
+Castellan,2025-12-17,muscle fatigue,calf,minor,3,history,,0,2025-12-17T23:59:00Z
+Novak,2025-12-29,hamstring strain,thigh,minor,4,history,,0,2025-12-29T23:59:00Z
+Marlow,2026-02-10,quadriceps contusion,thigh,minor,4,history,,0,2026-02-10T23:59:00Z
+Novak,2026-02-15,calf strain,calf,minor,6,history,,0,2026-02-15T23:59:00Z
+Hartmann,2026-04-08,quadriceps contusion,thigh,minor,3,history,,0,2026-04-08T23:59:00Z
+Ferreira,2026-04-09,quadriceps contusion,thigh,minor,8,history,,0,2026-04-09T23:59:00Z
+Teixeira,2026-05-10,concussion,head,minor,6,history,,0,2026-05-10T23:59:00Z
+Vance,2026-06-01,muscle fatigue,calf,minor,6,history,,0,2026-06-01T23:59:00Z
+Moretti,2026-07-21,concussion,head,minor,7,training,,0,2026-07-21T23:59:00Z
+Salah-Reyes,2026-07-25,knee ligament sprain,knee,severe,114,training,,0,2026-07-25T23:59:00Z
+Marlow,2026-07-29,calf strain,calf,minor,9,match,31,0,2026-07-29T23:59:00Z
+Ibarra,2026-08-02,knee ligament sprain,knee,severe,82,match,74,0,2026-08-02T23:59:00Z
+Novak,2026-08-06,groin strain,groin,moderate,31,match,61,0,2026-08-06T23:59:00Z
+Calder,2026-08-15,muscle fatigue,calf,minor,5,match,49,0,2026-08-15T23:59:00Z
+Brandt,2026-08-22,muscle fatigue,calf,minor,7,match,9,0,2026-08-22T23:59:00Z
+Castellan,2026-08-22,ankle sprain,ankle,moderate,34,match,14,0,2026-08-22T23:59:00Z
+Duarte,2026-09-03,ankle sprain,ankle,moderate,14,training,,0,2026-09-03T23:59:00Z
+Brandt,2026-09-05,calf strain,calf,minor,10,training,,1,2026-09-05T23:59:00Z
+Petrov,2026-09-17,concussion,head,minor,8,training,,0,2026-09-17T23:59:00Z
+Moretti,2026-09-19,muscle fatigue,calf,minor,7,match,66,0,2026-09-19T23:59:00Z
+Haas,2026-10-07,concussion,head,minor,7,match,26,0,2026-10-07T23:59:00Z
+Quinn,2026-10-07,hamstring strain,thigh,minor,6,match,66,1,2026-10-07T23:59:00Z
+Castellan,2026-10-07,calf strain,calf,minor,6,match,35,1,2026-10-07T23:59:00Z
+Brandt,2026-10-12,concussion,head,minor,3,training,,0,2026-10-12T23:59:00Z
+Nakamura-Hale,2026-10-17,metatarsal fracture,foot,severe,105,match,6,0,2026-10-17T23:59:00Z

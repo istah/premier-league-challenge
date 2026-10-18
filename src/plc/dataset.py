@@ -1,4 +1,4 @@
-"""Bronze dataset: ~90 days of wearables, training, injuries and 15 matches, written as CSVs.
+"""Bronze dataset: ~90 days of wearables, training, injuries and 15 matches for a 32-player squad, written as CSVs.
 Raw and append-only by convention; every row carries `date` and `ingest_ts`."""
 import csv
 import json
@@ -47,7 +47,7 @@ def write(out: Path, name: str, rows: list[dict]):
 def build(out: Path, seed: int = 0, days: int = DAYS) -> dict[str, int]:
     out.mkdir(parents=True, exist_ok=True)
     rng = random.Random(seed)
-    squad = make_squad(seed)
+    squad = make_squad(seed, depth=True)
     prof = {p.name: make_profile(p.name, p.position, rng) for p in squad}
     pos = {p.name: p.position for p in squad}
     trend = {p.name: rng.uniform(-1, 1) for p in squad}
