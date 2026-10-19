@@ -61,3 +61,8 @@ def assess(formation: str, o: Opponent) -> Assessment:
 
 def recommend(o: Opponent) -> str:
     return max(FORMATIONS, key=lambda f: _fit(f, o)[0])
+
+
+def their_formation(o: Opponent) -> str:
+    """Derived from the opponent's style traits (a modelling assumption), so the Opponent Analyst has a shape to talk about."""
+    return "4-3-3" if o.press >= HIGH else "5-3-2" if o.aerial >= HIGH else "4-4-2" if o.press <= LOW else "3-5-2"

@@ -13,6 +13,7 @@ from .coach import Decision, decide
 from .engine import Match, new_match
 from .tactics import FORMATIONS, assess, recommend
 from .live import live_alerts
+from .staff import briefing
 from .squad import Player
 
 app = FastAPI(title="Redmoor FC Coach Room")
@@ -92,3 +93,8 @@ def decision(mid: str, cmd: Command):
     if formation:
         m.set_formation(formation)
     return {"applied": asdict(d) if d else None, **_state(m)}
+
+
+@app.get("/match/{mid}/briefing")
+def staff_briefing(mid: str):
+    return briefing(_get(mid)[0])

@@ -19,11 +19,24 @@ MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)
 
 
 @dataclass
+class Shape:
+    """One team's collective behaviour over the last 5 minutes: what the style analysts read."""
+    possession: float  # %
+    def_line: float  # height of the back line, 0 own goal .. 100 opponent goal
+    fwd_pct: float  # share of passes going forward / sideways / back
+    lateral_pct: float
+    back_pct: float
+    wide_pct: float  # share of attacks through the wide channels
+    ppda: float  # opponent passes allowed per defensive action: lower means a more aggressive press
+
+
+@dataclass
 class Tick:
     minute: int
     snaps: list[Snapshot]
     events: list[Event]
     score: tuple[int, int]
+    shapes: dict[str, Shape] = field(default_factory=dict)  # keyed "us" / "them"
 
 
 @dataclass
@@ -40,6 +53,7 @@ class Match:
     formation: str = "4-3-3"
     snaps: list[Snapshot] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
+    shapes: list[dict[str, Shape]] = field(default_factory=list)
 
     def __post_init__(self):
         self.rng = random.Random(self.seed)
@@ -95,7 +109,24 @@ class Match:
                                     round(self.rng.uniform(75, 98), 1), round(self.rng.uniform(25, 75), 1), {"xg": xg, "goal": goal}))
         self.snaps += snaps
         self.events += events
-        return Tick(self.minute, snaps, events, (self.score[0], self.score[1]))
+        shapes = self._shapes()
+        self.shapes.append(shapes)
+        return Tick(self.minute, snaps, events, (self.score[0], self.score[1]), shapes)
+
+    def _shapes(self) -> dict[str, Shape]:
+        g, d, m, f = self.rng.gauss, *FORMATIONS[self.formation]
+        push = {"defend": -10, "balanced": 0, "attack": 10}[self.mentality]
+        us_pos = max(30, min(70, 50 + 6 * (m - 3) + (self.strength() - self.opp_strength) * 0.4 + push / 3 + g(0, 1.5)))
+        lat = 28 + 4 * (m - 3)
+        us = Shape(round(us_pos, 1), round(38 + push + 2 * (f - 3) + g(0, 1.5), 1), round(40 + push / 2 + g(0, 2), 1), round(lat + g(0, 2), 1),
+                   round(max(5, 100 - (40 + push / 2) - lat + g(0, 1)), 1), round(35 + (10 if d != 4 else 0) + g(0, 2), 1), round(12 - push / 2 + g(0, 1), 1))
+        o = self.profile
+        lead = self.score[1] > self.score[0] and self.minute >= 65  # a leading opponent sits deeper
+        line = 30 + 25 * o.press - (12 if lead else 0) + g(0, 1.5)
+        fwd = 28 + 30 * o.aerial + g(0, 2)
+        them = Shape(round(100 - us_pos, 1), round(line, 1), round(fwd, 1), round(30 + g(0, 2), 1), round(max(5, 70 - fwd + g(0, 1)), 1),
+                     round(55 - 20 * o.press + g(0, 2), 1), round(14 - 10 * o.press + (4 if lead else 0) + g(0, 1), 1))
+        return {"us": us, "them": them}
 
     @property
     def finished(self) -> bool:
