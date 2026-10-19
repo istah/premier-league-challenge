@@ -57,3 +57,22 @@ def test_formation_change_moves_players_along_the_chain():
     assert m.strength() < _match()[0].strength()
     m.set_formation("4-3-3")
     assert m.moves() == {}  # back to natural roles, nothing accumulates
+
+
+def test_pressing_hard_creates_more_but_tires_players_sooner():
+    calm, _ = _match()
+    hard, _ = _match()
+    hard.set_instructions(press=90, tempo=80)
+    _to(75, calm), _to(75, hard)
+    p = hard.xi[5]
+    assert hard.fade(p) >= calm.fade(p) and hard.mentality == "custom"
+    assert hard.snaps[-1].distance_m <= calm.snaps[-1].distance_m * 1.1  # fatigue shows up in the data, not just a flag
+    assert hard.shapes[-1]["us"].ppda < calm.shapes[-1]["us"].ppda  # and the press is visible in the style stats
+
+
+def test_wellness_exposes_a_player_hrv_would_miss():
+    from plc.readiness import concerns
+    m, _ = _match()
+    out = concerns(m.xi, m.hrv, m.wellness)
+    assert any("HRV alone would miss this" in c for c in out)
+    assert not any("HRV alone" in c for c in concerns(m.xi, m.hrv))  # without the check-in he looks fine

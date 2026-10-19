@@ -49,6 +49,8 @@
   .mvback .badgemv { background:#7c3aed; } .mvfwd .badgemv { background:#ea580c; }
   .mvback .dot { outline:3px solid #7c3aed88; } .mvfwd .dot { outline:3px solid #ea580c88; }
   .dot { position:relative; }
+  .sl { display:grid; grid-template-columns:70px 1fr 34px; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
+  input[type=range] { accent-color:var(--accent); width:100%; }
   .hint { color:var(--mute); font-size:12.5px; margin-top:10px; }
   .pop { position:absolute; z-index:5; width:230px; background:#0f161d; border:1px solid var(--accent); border-radius:14px; padding:14px; box-shadow:0 18px 40px #000c; transform:translate(-50%,14px); }
   .pop[hidden] { display:none; }
@@ -78,7 +80,7 @@
   <section>
     <div class="toolbar">
       <span class="mute">Formation</span><select id="formation"></select>
-      <span class="mute sp">Approach</span>
+      <span class="mute sp">Preset</span>
       <span class="seg"><button data-m="defend">Defend</button><button data-m="balanced">Balanced</button><button data-m="attack">Attack</button></span>
     </div>
     <div class="stage"><div class="pitch" id="pitch">
@@ -100,6 +102,12 @@
       <div id="tac"></div>
     </div>
     <div class="card"><h2>Staff room <button id="ask" style="float:right;padding:2px 10px">Ask the staff</button></h2><div id="staff" class="mute" style="font-size:13px">Opponent, style and tactics analysts report here once the match is under way.</div></div>
+    <div class="card">
+      <h2>Team instructions <span id="custom" class="mute" style="float:right;text-transform:none;letter-spacing:0"></span></h2>
+      <div id="sliders"></div>
+      <div class="hint" style="margin-top:4px">Pressing and tempo create chances but tire players sooner. A high line is exposed to their counters.</div>
+    </div>
+    <div class="card"><h2>Readiness check-in</h2><div id="ready" style="font-size:13px"></div></div>
     <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute">None right now. The AI compares every player with their own baseline.</div></div>
     <div class="card">
       <h2>Your call (always wins)</h2>
@@ -164,11 +172,22 @@ function play(frames) {  // one frame per simulated minute
   anim = setInterval(() => { if (i >= frames.length) return clearInterval(anim); Object.assign(pos, frames[i++]); place(); }, 220);
 }
 
+const SLIDERS = {press: 'Press', line: 'Line height', width: 'Width', tempo: 'Tempo'};
+function sliders() {
+  if (!$('sliders').children.length) {
+    $('sliders').innerHTML = Object.entries(SLIDERS).map(([k, l]) => `<div class="sl"><span>${l}</span><input type="range" min="0" max="100" step="5" data-k="${k}"><b id="v-${k}">50</b></div>`).join('');
+    document.querySelectorAll('[data-k]').forEach(r => { r.oninput = () => $('v-' + r.dataset.k).textContent = r.value; r.onchange = () => send({instructions: {[r.dataset.k]: +r.value}}); });
+  }
+  document.querySelectorAll('[data-k]').forEach(r => { r.value = state.instructions[r.dataset.k]; $('v-' + r.dataset.k).textContent = r.value; });
+  $('custom').textContent = state.mentality === 'custom' ? 'custom' : state.mentality;
+  $('ready').innerHTML = state.concerns.length ? state.concerns.map(c => `<div style="margin:5px 0">⚠ ${c}</div>`).join('') : '<span class="mute">Everyone in the XI is ready.</span>';
+}
+
 function render() {
   $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
   $('clock').textContent = `${state.minute}'`;
   $('prog').style.width = `${state.minute / 90 * 100}%`;
-  layout(); place();
+  layout(); place(); sliders();
   $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${p.position} ${p.rating}</small></span>`).join('');
   document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === state.mentality));
   $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
@@ -192,7 +211,7 @@ function openPop(el) {
   const p = state.xi.find(x => x.name === el.dataset.name), f = info(p.name), line = state.lines[p.name];
   selected = p.name;
   $('pn').textContent = p.name;
-  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline` + (f.hr ? ` · HR ${f.hr} · output ${f.drop > 0 ? '-' : '+'}${Math.abs(Math.round(f.drop * 100))}%` : '');
+  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline · wellness ${state.wellness[p.name].hooper}/28` + (f.hr ? ` · HR ${f.hr} · output ${f.drop > 0 ? '-' : '+'}${Math.abs(Math.round(f.drop * 100))}%` : '');
   const bench = [...state.bench].sort((a, b) => (b.position === line) - (a.position === line) || b.rating - a.rating);
   $('psub').innerHTML = `<option value="">Choose replacement...</option>` + bench.map(b => `<option value="${b.name}">${b.name} (${b.position}, ${b.rating})</option>`).join('');
   const pop = $('pop'); pop.style.left = el.style.left; pop.style.top = el.style.top; pop.hidden = false;

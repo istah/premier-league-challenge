@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 
 from .events import Event
 from .fixtures import make_opponent
-from .readiness import match_day_hrv, pick_xi
+from .readiness import match_day_hrv, match_day_wellness, pick_xi, wellness_ratio
 from .squad import CLUB, Player, make_squad
 from .tactics import FORMATIONS, assess, their_formation
 from .tracking import Snapshot
@@ -15,7 +15,8 @@ from .training import run_training
 
 ORDER = {"DEF": 0, "MID": 1, "FWD": 2}
 PENALTY = {0: 1.0, 1: 0.95, 2: 0.88}  # strength multiplier by how many lines a player is moved from his natural one
-MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)}  # (our chances, their chances)
+PRESETS = {"defend": {"press": 35, "line": 30, "width": 50, "tempo": 40}, "balanced": {"press": 50, "line": 50, "width": 50, "tempo": 50},
+           "attack": {"press": 70, "line": 70, "width": 60, "tempo": 65}}  # 0-100 sliders; 50 is neutral
 
 
 @dataclass
@@ -50,7 +51,9 @@ class Match:
     seed: int = 0
     minute: int = 0
     score: list[int] = field(default_factory=lambda: [0, 0])
-    mentality: str = "balanced"
+    mentality: str = "balanced"  # preset name, or "custom" once a slider moves
+    instructions: dict = field(default_factory=lambda: dict(PRESETS["balanced"]))
+    wellness: dict = field(default_factory=dict)  # name -> check-in scores, see readiness.py
     formation: str = "4-3-3"
     snaps: list[Snapshot] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
@@ -63,8 +66,9 @@ class Match:
         self.profile = make_opponent(self.opponent, self.seed)
 
     def fade(self, p: Player) -> float:
-        r = self.hrv.get(p.name, 1.0)
-        played = self.minute - self.entered[p.name]
+        r = min(self.hrv.get(p.name, 1.0), wellness_ratio(self.wellness[p.name]) if p.name in self.wellness else 9)
+        i = self.instructions
+        played = (self.minute - self.entered[p.name]) * max(0.5, 1 + 0.008 * (i["press"] - 50) + 0.006 * (i["tempo"] - 50))  # pressing hard tires players sooner
         return max(0, played - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
 
     def distance(self, p: Player) -> int:
@@ -93,8 +97,14 @@ class Match:
         self.formation = formation
 
     def set_mentality(self, mentality: str) -> None:
-        if mentality in MENTALITY:
-            self.mentality = mentality
+        if mentality in PRESETS:
+            self.mentality, self.instructions = mentality, dict(PRESETS[mentality])
+
+    def set_instructions(self, **sliders: int) -> None:
+        for k, v in sliders.items():
+            if k in self.instructions:
+                self.instructions[k] = max(0, min(100, int(v)))
+        self.mentality = "custom"
 
     def tick(self) -> Tick:
         self.minute += 5
@@ -103,7 +113,9 @@ class Match:
             f = self.fade(p)
             snaps.append(Snapshot(self.minute, p.name, round(self.rng.gauss(560, 40) * (1 - f)), max(0, round(self.rng.gauss(2, 1) * (1 - f))),
                                   round(self.rng.gauss(165, 6) + f * 12), self.hrv.get(p.name, 1.0)))
-        mine, theirs = MENTALITY[self.mentality]
+        i = self.instructions
+        mine = 1 + 0.004 * (i["press"] - 50) + 0.003 * (i["tempo"] - 50) + 0.002 * (i["line"] - 50)
+        theirs = 1 + 0.004 * (i["line"] - 50) - 0.003 * (i["press"] - 50)  # a high line is exposed; a hard press disrupts them
         fit = assess(self.formation, self.profile).fit
         mine, theirs = mine * (1 + fit), theirs * (1 - fit / 2)
         events = []
@@ -123,11 +135,12 @@ class Match:
 
     def _shapes(self) -> dict[str, Shape]:
         g, d, m, f = self.rng.gauss, *FORMATIONS[self.formation]
-        push = {"defend": -10, "balanced": 0, "attack": 10}[self.mentality]
-        us_pos = max(30, min(70, 50 + 6 * (m - 3) + (self.strength() - self.opp_strength) * 0.4 + push / 3 + g(0, 1.5)))
+        i = self.instructions
+        push = (i["line"] - 50) / 2
+        us_pos = max(30, min(70, 50 + 6 * (m - 3) + (self.strength() - self.opp_strength) * 0.4 + (i["line"] - 50) / 30 + g(0, 1.5)))
         lat = 28 + 4 * (m - 3)
-        us = Shape(round(us_pos, 1), round(38 + push + 2 * (f - 3) + g(0, 1.5), 1), round(40 + push / 2 + g(0, 2), 1), round(lat + g(0, 2), 1),
-                   round(max(5, 100 - (40 + push / 2) - lat + g(0, 1)), 1), round(35 + (10 if d != 4 else 0) + g(0, 2), 1), round(12 - push / 2 + g(0, 1), 1))
+        us = Shape(round(us_pos, 1), round(38 + push + 2 * (f - 3) + g(0, 1.5), 1), round(40 + (i["tempo"] - 50) / 5 + g(0, 2), 1), round(lat + g(0, 2), 1),
+                   round(max(5, 100 - (40 + (i["tempo"] - 50) / 5) - lat + g(0, 1)), 1), round(35 + (i["width"] - 50) * 0.3 + (10 if d != 4 else 0) + g(0, 2), 1), round(12 - (i["press"] - 50) * 0.1 + g(0, 1), 1))
         o = self.profile
         lead = self.score[1] > self.score[0] and self.minute >= 65  # a leading opponent sits deeper
         line = 30 + 25 * o.press - (12 if lead else 0) + g(0, 1.5)
@@ -145,7 +158,8 @@ class Match:
             for line, names in names_by_line.items():
                 x = {"GK": 5, "DEF": height, "MID": height + 18, "FWD": min(92, height + 36)}[line]
                 for i, name in enumerate(names):
-                    anchors[name] = (100 - x if mirror else x, (i + 1) / (len(names) + 1) * 100)
+                    y = (i + 1) / (len(names) + 1) * 100
+                    anchors[name] = (100 - x if mirror else x, 50 + (y - 50) * (0.6 + 0.8 * self.instructions["width"] / 100) if not mirror else y)
 
         ours: dict[str, list[str]] = {}
         for p in self.xi:
@@ -177,10 +191,14 @@ def new_match(seed: int = 7) -> tuple["Match", list[Player]]:
     run_training(squad, seed=seed)
     tired = max((p for p in squad if p.position == "MID"), key=lambda p: p.rating).name
     hrv = match_day_hrv(squad, seed, tired)
-    xi, bench = pick_xi(squad, hrv)
+    wellness = match_day_wellness(squad, seed, poor=(tired,))
+    xi, bench = pick_xi(squad, hrv, wellness)
     if tired not in [p.name for p in xi]:
         t = next(p for p in squad if p.name == tired)
         weak = min((p for p in xi if p.position == "MID"), key=lambda p: p.rating)
         xi[xi.index(weak)] = t
         bench[:] = [b for b in bench if b.name != tired] + [weak]
-    return Match(xi, bench, hrv, seed=seed), squad
+    hidden = max((p for p in xi if p.position == "FWD"), key=lambda p: p.rating).name  # HRV fine, wellness poor: only the check-in reveals him
+    wellness[hidden] = {"sleep": 6, "stress": 5, "soreness": 6, "fatigue": 5}
+    hrv[hidden] = max(hrv[hidden], 0.95)
+    return Match(xi, bench, hrv, seed=seed, wellness=wellness), squad

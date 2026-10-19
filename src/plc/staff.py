@@ -9,6 +9,7 @@ import os
 from dataclasses import asdict
 
 from .engine import Match
+from .readiness import concerns
 from .style import classify, shifts
 from .tactics import assess, recommend, their_formation
 
@@ -25,6 +26,7 @@ def gold_facts(m: Match) -> dict:
         "their_style": [asdict(s) for s in classify([h["them"] for h in recent])],
         "their_shifts": shifts(m.shapes, "them"), "our_shifts": shifts(m.shapes, "us"),
         "tactical_read": asdict(assess(m.formation, m.profile)), "recommended_formation": recommend(m.profile),
+        "our_instructions": m.instructions, "readiness_concerns": concerns(m.xi, m.hrv, m.wellness),
         "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()],
     }
 

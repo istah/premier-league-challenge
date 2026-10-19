@@ -32,3 +32,12 @@ def test_formation_by_dictation_and_button():
     assert out["formation"] == "4-4-2" and sorted(out["lines"].values()).count("MID") == 4
     out = c.post(f"/match/{mid}/decision", json={"formation": "3-4-3"}).json()
     assert list(out["lines"].values()).count("FWD") == 3
+
+
+def test_sliders_and_spoken_instructions():
+    mid = c.post("/match").json()["id"]
+    out = c.post(f"/match/{mid}/decision", json={"instructions": {"press": 80}}).json()
+    assert out["instructions"]["press"] == 80 and out["mentality"] == "custom"
+    out = c.post(f"/match/{mid}/decision", json={"transcript": "drop deeper"}).json()
+    assert out["instructions"]["line"] == 30
+    assert out["wellness"] and out["concerns"]

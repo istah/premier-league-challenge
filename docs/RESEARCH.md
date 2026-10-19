@@ -12,8 +12,8 @@ PPDA (opponent passes per defensive action; lower = harder press) is the standar
 
 ## Readiness and fatigue
 In professional players the Hooper wellness index (subjective sleep, stress, soreness, fatigue) tracked match fatigue better than resting HRV ([study](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6390199/)). Wrist PPG-derived HRV is not fully interchangeable with ECG HRV ([2026 review](https://nhsjs.com/2026/a-low-cost-ppg-based-wearable-framework-for-monitoring-fatigue-and-recovery-in-athletes/)). Heart-rate-only features classified fatigue at about 90% in training ([study](https://www.sciencedirect.com/science/article/pii/S2542660525003610)). No direct evidence found that HRV-guided decisions improve substitution timing.
-**Adopt:** add a subjective wellness score to readiness next to HRV; pitch HRV as one signal, not proof; live alerts already lean on heart rate and output.
+**Adopted:** a subjective wellness score to readiness next to HRV; pitch HRV as one signal, not proof; live alerts already lean on heart rate and output.
 
 ## Open-source match engines
 [tbleckert/football-simulator](https://github.com/tbleckert/football-simulator) and [fredGob/foot-match-engine](https://github.com/fredGob/foot-match-engine) expose tactics as numeric instructions (press, width, tempo, defensive line, compactness). [DeltaBitsSystem/FootballEngine](https://github.com/DeltaBitsSystem/FootballEngine) uses target positions plus intents; [abpfiff](https://github.com/davidklemme/abpfiff) composes tactical rules over a spatial control model.
-**Adopt:** replace the 3-state "approach" with instruction sliders (press, line height, width, tempo) that feed the shapes and positions; our anchor-plus-ball-pull positions match the common pattern. Pitch control is a stretch goal.
+**Adopted:** instruction sliders replace the 3-state "approach" (presets remain) (press, line height, width, tempo) that feed the shapes and positions; our anchor-plus-ball-pull positions match the common pattern. Pitch control is a stretch goal.

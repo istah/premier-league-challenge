@@ -13,6 +13,7 @@ from .coach import Decision, decide
 from .engine import Match, new_match
 from .tactics import FORMATIONS, assess, recommend
 from .live import live_alerts
+from .readiness import concerns, hooper, wellness_ratio
 from .staff import briefing
 from .squad import Player
 
@@ -21,6 +22,9 @@ INDEX = Path(__file__).parent / "static" / "index.html"
 SESSIONS: dict[str, tuple[Match, list[Player]]] = {}
 
 
+KEYS = {"press": {"press", "pressing"}, "line": {"line", "deeper"}, "width": {"width", "wider", "narrower"}, "tempo": {"tempo", "faster", "slower"}}
+UP = {"higher", "more", "up", "faster", "wider", "increase"}
+DOWN = {"lower", "less", "down", "slower", "narrower", "deeper", "drop", "decrease"}
 NUMBERS = {"three": "3", "four": "4", "five": "5", "two": "2", "one": "1"}  # dictation spells digits out
 
 
@@ -30,11 +34,13 @@ class Command(BaseModel):
     on: str | None = None
     mentality: str | None = None
     formation: str | None = None
+    instructions: dict[str, int] | None = None  # press / line / width / tempo, 0-100
 
 
 def _state(m: Match) -> dict:
     return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": {f: assess(f, m.profile).verdict for f in FORMATIONS}, "recommended": recommend(m.profile),
-            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "lines": m.line, "xi": [asdict(p) for p in m.xi],
+            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "instructions": m.instructions,
+            "wellness": {n: {"hooper": hooper(w), "ratio": wellness_ratio(w)} for n, w in m.wellness.items()}, "concerns": concerns(m.xi, m.hrv, m.wellness), "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 
 
@@ -87,6 +93,13 @@ def decision(mid: str, cmd: Command):
     mentality = cmd.mentality or next((k for k, w in (("attack", "attack"), ("attack", "attacking"), ("defend", "defend"), ("defend", "defensive"), ("balanced", "balanced")) if w in words), None)
     if mentality:
         m.set_mentality(mentality)
+    sliders = dict(cmd.instructions or {})
+    for key, names in KEYS.items():  # "press higher", "sit deeper", "play faster"
+        sign = (1 if UP & set(words) else -1 if DOWN & set(words) else 0) if names & set(words) else 0
+        if sign:
+            sliders.setdefault(key, max(0, min(100, m.instructions[key] + 20 * sign)))
+    if sliders:
+        m.set_instructions(**sliders)
     spoken = " ".join(NUMBERS.get(w, w) for w in words)
     found = re.search(r"\b(\d) ?(\d) ?(\d)\b", spoken)
     formation = cmd.formation or (f"{found[1]}-{found[2]}-{found[3]}" if found else None)
