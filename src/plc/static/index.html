@@ -47,6 +47,7 @@
   .pop .row { display:flex; gap:8px; } .pop .row button { flex:1; }
   .sug { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn) inset, 0 10px 30px #fbbf2414; }
   .badge { display:inline-block; padding:2px 9px; border-radius:999px; background:#fbbf2422; color:var(--warn); font-size:12px; font-weight:600; }
+  .badge.ok { background:#34d39922; color:var(--ok); } .badge.bad { background:#f8717122; color:var(--bad); }
   .mute { color:var(--mute); }
   .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   input[type=text] { flex:1; min-width:0; background:#0b1118; color:var(--text); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font:inherit; }
@@ -84,6 +85,10 @@
     <div class="hint">Dot colour = output vs the player's own first half: green steady, amber slipping, red fading. Click a player to substitute.</div>
   </section>
   <aside>
+    <div class="card">
+      <h2>Tactical read vs <span id="oppname">opponent</span></h2>
+      <div id="tac"></div>
+    </div>
     <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute">None right now. The AI compares every player with their own baseline.</div></div>
     <div class="card">
       <h2>Your call (always wins)</h2>
@@ -130,8 +135,15 @@ function render() {
   document.querySelectorAll('.pl').forEach(el => el.onclick = e => { e.stopPropagation(); openPop(el); });
   $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${p.position} ${p.rating}</small></span>`).join('');
   document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === state.mentality));
-  if (!$('formation').options.length) $('formation').innerHTML = state.formations.map(f => `<option>${f}</option>`).join('');
+  $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
   $('formation').value = state.formation;
+  const t = state.tactics, cls = {'Best fit': 'ok', 'Good fit': 'ok', 'Risky': 'bad'}[t.verdict];
+  $('tac').innerHTML = `<span class="badge ${cls}">${t.formation}: ${t.verdict}</span>
+    ${state.formation !== state.recommended ? `<button style="margin-left:8px;padding:3px 10px" id="usebest">Use ${state.recommended}</button>` : ''}
+    <ul style="padding-left:18px;margin:10px 0 6px">${t.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
+    ${state.out_of_position.length ? `<div class="mute" style="font-size:13px">Out of position (-7%): ${state.out_of_position.join(', ')}</div>` : ''}
+    <div style="margin-top:10px;font-size:13px">${Object.entries(t.movements).map(([l, m]) => `<div style="margin:5px 0"><b>${l}</b> ${m}</div>`).join('')}</div>`;
+  if ($('usebest')) $('usebest').onclick = () => send({formation: state.recommended});
 }
 
 function openPop(el) {
@@ -195,7 +207,7 @@ const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SR) $('mic').style.display = 'none';
 else $('mic').onclick = () => { const r = new SR(); r.lang = 'en-GB'; r.onresult = e => { $('cmd').value = e.results[0][0].transcript; $('cmdform').requestSubmit(); }; r.start(); say('Listening...'); };
 
-fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; render(); });
+fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; $('oppname').textContent = 'Harbour Rovers'; render(); });
 </script>
 </body>
 </html>

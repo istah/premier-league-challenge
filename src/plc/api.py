@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .coach import Decision, decide
-from .engine import FORMATIONS, Match, new_match
+from .engine import Match, new_match
+from .tactics import FORMATIONS, assess, recommend
 from .live import live_alerts
 from .squad import Player
 
@@ -31,7 +32,8 @@ class Command(BaseModel):
 
 
 def _state(m: Match) -> dict:
-    return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": list(FORMATIONS), "lines": m.line, "xi": [asdict(p) for p in m.xi],
+    return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": {f: assess(f, m.profile).verdict for f in FORMATIONS}, "recommended": recommend(m.profile),
+            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [p.name for p in m.xi if m.line[p.name] != p.position], "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 
 
@@ -47,9 +49,11 @@ def index():
 
 
 @app.post("/match")
-def start(seed: int = 7):
+def start(seed: int = 7, formation: str | None = None):
     mid = uuid.uuid4().hex[:8]
     SESSIONS[mid] = new_match(seed)
+    if formation:
+        SESSIONS[mid][0].set_formation(formation)  # the coach's starting shape
     return {"id": mid, **_state(SESSIONS[mid][0])}
 
 

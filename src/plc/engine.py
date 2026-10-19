@@ -6,12 +6,13 @@ import random
 from dataclasses import dataclass, field
 
 from .events import Event
+from .fixtures import make_opponent
 from .readiness import match_day_hrv, pick_xi
 from .squad import CLUB, Player, make_squad
+from .tactics import FORMATIONS, assess
 from .tracking import Snapshot
 from .training import run_training
 
-FORMATIONS = {"4-3-3": (4, 3, 3), "4-4-2": (4, 4, 2), "3-5-2": (3, 5, 2), "3-4-3": (3, 4, 3), "5-3-2": (5, 3, 2)}  # DEF, MID, FWD
 ORDER = {"DEF": 0, "MID": 1, "FWD": 2}
 OUT_OF_POSITION = 0.93  # strength multiplier for a player used outside their natural line
 MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)}  # (our chances, their chances)
@@ -44,6 +45,7 @@ class Match:
         self.rng = random.Random(self.seed)
         self.entered = {p.name: 0 for p in self.xi}
         self.line = {p.name: p.position for p in self.xi}
+        self.profile = make_opponent(self.opponent, self.seed)
 
     def fade(self, p: Player) -> float:
         r = self.hrv.get(p.name, 1.0)
@@ -80,8 +82,8 @@ class Match:
             snaps.append(Snapshot(self.minute, p.name, round(self.rng.gauss(560, 40) * (1 - f)), max(0, round(self.rng.gauss(2, 1) * (1 - f))),
                                   round(self.rng.gauss(165, 6) + f * 12), self.hrv.get(p.name, 1.0)))
         mine, theirs = MENTALITY[self.mentality]
-        _, _, fwd = FORMATIONS[self.formation]
-        mine, theirs = mine * (1 + 0.1 * (fwd - 3)), theirs * (1 - 0.08 * (FORMATIONS[self.formation][0] - 4))
+        fit = assess(self.formation, self.profile).fit
+        mine, theirs = mine * (1 + fit), theirs * (1 - fit / 2)
         events = []
         for side, chance in ((0, 0.35 * self.strength() / 70 * mine), (1, 0.35 * self.opp_strength / 70 * theirs)):
             if self.rng.random() < chance:
