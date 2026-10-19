@@ -41,3 +41,12 @@ def test_sliders_and_spoken_instructions():
     out = c.post(f"/match/{mid}/decision", json={"transcript": "drop deeper"}).json()
     assert out["instructions"]["line"] == 30
     assert out["wellness"] and out["concerns"]
+
+
+def test_every_slider_explains_itself_with_current_numbers():
+    s = c.post("/match").json()
+    assert set(s["explain"]) == set(s["instructions"]) and s["their_formation"]
+    mid = s["id"]
+    low = c.post(f"/match/{mid}/decision", json={"instructions": {"press": 20}}).json()["explain"]["press"]["now"]
+    high = c.post(f"/match/{mid}/decision", json={"instructions": {"press": 90}}).json()["explain"]["press"]["now"]
+    assert low != high and "fade from" in high

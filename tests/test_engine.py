@@ -76,3 +76,35 @@ def test_wellness_exposes_a_player_hrv_would_miss():
     out = concerns(m.xi, m.hrv, m.wellness)
     assert any("HRV alone would miss this" in c for c in out)
     assert not any("HRV alone" in c for c in concerns(m.xi, m.hrv))  # without the check-in he looks fine
+
+
+def _frames_for(plan, minutes=90, formation="4-4-2"):
+    m, _ = _match()
+    m.set_formation(formation)
+    m.set_mentality(plan)
+    out = []
+    while m.minute < minutes:
+        out.append((m.tick(), m))
+    return out
+
+
+def test_counter_plan_sits_deep_goes_direct_and_is_labelled():
+    from plc.style import classify
+    shapes = [t.shapes["us"] for t, _ in _frames_for("counter")[-4:]]
+    labels = [s.label for s in classify(shapes)]
+    assert "low block" in labels and "counter-attacking" in labels
+    assert "counter-attacking" not in [s.label for s in classify([t.shapes["us"] for t, _ in _frames_for("possession")[-4:]])]
+
+
+def test_wings_plan_overlaps_fullbacks_and_box_slider_fills_the_box():
+    def stats(plan, box=None):
+        run, overlaps, in_box = _frames_for(plan), 0, 0
+        for t, m in run:
+            overlaps += sum(r == "overlaps" for r in t.roles.values())
+            for f in t.frames:
+                if f["ball"][0] > 68:
+                    in_box = max(in_box, sum(f[p.name][0] >= 78 for p in m.xi))
+        return overlaps, in_box
+    wings, inside = stats("wings"), stats("inside")
+    assert wings[0] > inside[0] == 0  # only the wide plan produces overlapping runs
+    assert wings[1] >= inside[1]

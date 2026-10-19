@@ -10,9 +10,11 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .coach import Decision, decide
-from .engine import Match, new_match
-from .tactics import FORMATIONS, assess, recommend
+from .engine import PRESETS, Match, new_match
+from .explain import explain
+from .tactics import FORMATIONS, assess, recommend, their_formation
 from .live import live_alerts
+from .profiles import LINES, archetype, attributes, fit, needs
 from .readiness import concerns, hooper, wellness_ratio
 from .staff import briefing
 from .squad import Player
@@ -37,9 +39,28 @@ class Command(BaseModel):
     instructions: dict[str, int] | None = None  # press / line / width / tempo, 0-100
 
 
+def _fit(m: Match) -> dict:
+    need = needs(m.formation, m.instructions, m.profile)
+    rows = {}
+    for p in m.xi + m.bench:
+        line = m.line.get(p.name, p.position)
+        score, why = fit(p, line if line in LINES else "DEF", need)
+        rows[p.name] = {"archetype": archetype(p), "fit": score, "why": why, "attrs": attributes(p), "line": line}
+    ideas = []
+    for line in LINES:
+        xi = [p for p in m.xi if m.line[p.name] == line]
+        bench = [b for b in m.bench if b.position == line]
+        if xi and bench:
+            worst, best = min(xi, key=lambda p: rows[p.name]["fit"]), max(bench, key=lambda b: fit(b, line, need)[0])
+            gain = fit(best, line, need)[0] - rows[worst.name]["fit"]
+            if gain >= 3:
+                ideas.append({"off": worst.name, "on": best.name, "gain": gain, "line": line, "why": rows[best.name]["why"] or [f"{rows[best.name]['archetype']}"]})
+    return {"players": rows, "ideas": ideas, "needs": {line: [{"attr": n.attr, "reason": n.reason} for n in sorted(ns, key=lambda n: -n.weight)[:3]] for line, ns in need.items()}}
+
+
 def _state(m: Match) -> dict:
     return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": {f: assess(f, m.profile).verdict for f in FORMATIONS}, "recommended": recommend(m.profile),
-            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "instructions": m.instructions,
+            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "explain": explain(m.instructions), "their_formation": their_formation(m.profile), "playerfit": _fit(m), "instructions": m.instructions, "presets": list(PRESETS),
             "wellness": {n: {"hooper": hooper(w), "ratio": wellness_ratio(w)} for n, w in m.wellness.items()}, "concerns": concerns(m.xi, m.hrv, m.wellness), "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 

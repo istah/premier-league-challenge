@@ -49,8 +49,15 @@
   .mvback .badgemv { background:#7c3aed; } .mvfwd .badgemv { background:#ea580c; }
   .mvback .dot { outline:3px solid #7c3aed88; } .mvfwd .dot { outline:3px solid #ea580c88; }
   .dot { position:relative; }
-  .sl { display:grid; grid-template-columns:70px 1fr 34px; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
+  .sl { display:grid; grid-template-columns:118px 1fr 34px; align-items:center; gap:8px; margin:6px 0; font-size:13px; }
   input[type=range] { accent-color:var(--accent); width:100%; }
+  .ov { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .ol { position:absolute; font-size:11px; font-weight:600; color:#fff; background:#000a; padding:1px 7px; border-radius:6px; pointer-events:none; white-space:nowrap; transform:translate(-50%,0); z-index:2; }
+  .tgt { position:absolute; width:20px; height:20px; border-radius:50%; transform:translate(-50%,-50%); display:grid; place-items:center; font-size:11px; font-weight:700; border:2px dashed #fbbf24; color:#fbbf24; pointer-events:none; z-index:2; }
+  .tgt.on { background:#fbbf24; color:#111; border-style:solid; }
+  canvas.heat { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:.7; }
+  .slnote { grid-column:1 / -1; font-size:12px; color:var(--mute); margin:-2px 0 6px; }
+  .slnote b { color:var(--text); font-weight:600; }
   .hint { color:var(--mute); font-size:12.5px; margin-top:10px; }
   .pop { position:absolute; z-index:5; width:230px; background:#0f161d; border:1px solid var(--accent); border-radius:14px; padding:14px; box-shadow:0 18px 40px #000c; transform:translate(-50%,14px); }
   .pop[hidden] { display:none; }
@@ -80,20 +87,24 @@
   <section>
     <div class="toolbar">
       <span class="mute">Formation</span><select id="formation"></select>
-      <span class="mute sp">Preset</span>
-      <span class="seg"><button data-m="defend">Defend</button><button data-m="balanced">Balanced</button><button data-m="attack">Attack</button></span>
+      <label class="mute"><input type="checkbox" id="showov" checked> Tactics overlay</label>
+      <span class="mute">Heatmap</span><select id="heatsel"><option value="">off</option><option value="opp">opponents</option><option value="us">us</option></select>
+      <span class="mute sp">Game plan</span>
+      <span class="seg" id="presets" style="flex-wrap:wrap"></span>
     </div>
     <div class="stage"><div class="pitch" id="pitch">
       <svg viewBox="0 0 100 64" preserveAspectRatio="none"><g stroke="#ffffff88" stroke-width=".3" fill="none">
         <rect x="1" y="1" width="98" height="62"/><line x1="50" y1="1" x2="50" y2="63"/><circle cx="50" cy="32" r="7"/>
         <rect x="1" y="17" width="15" height="30"/><rect x="84" y="17" width="15" height="30"/></g></svg>
-      <div id="opps"></div><div class="ball" id="ball" hidden></div><div id="players"></div>
+      <canvas class="heat" id="heat"></canvas><svg class="ov" id="ov" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="ovl"></div><div id="opps"></div><div class="ball" id="ball" hidden></div><div id="players"></div>
       <div class="pop" id="pop" hidden>
         <h3 id="pn"></h3><p id="pi"></p>
         <select id="psub"></select>
         <div class="row"><button class="primary" id="pgo">Take off</button><button id="pcancel">Cancel</button></div>
       </div>
     </div></div>
+    <div class="hint" id="heatcap"></div>
+    <div class="hint" id="legend">Overlay: <b style="color:#6ea8ff">blue zone</b> = where we start pressing · <b>white dashed</b> = our back line · <b style="color:#a78bfa">purple dashed</b> = their back line · <b style="color:#fbbf24">arrows</b> = how we enter their box · yellow circles = players attacking the box.</div>
     <div class="hint">Dot colour = output vs the player's own first half: green steady, amber slipping, red fading. Click a player to substitute.</div>
   </section>
   <aside>
@@ -105,8 +116,9 @@
     <div class="card">
       <h2>Team instructions <span id="custom" class="mute" style="float:right;text-transform:none;letter-spacing:0"></span></h2>
       <div id="sliders"></div>
-      <div class="hint" style="margin-top:4px">Pressing and tempo create chances but tire players sooner. A high line is exposed to their counters.</div>
+      <div class="hint" style="margin-top:4px">Pressing and tempo create chances but tire players sooner. A high line is exposed to counters. Crosses give more shots of lower quality; inside passes the reverse. Direct build-up pays off when you cede possession.</div>
     </div>
+    <div class="card"><h2>Best-fit players</h2><div id="fit" style="font-size:13px"></div></div>
     <div class="card"><h2>Readiness check-in</h2><div id="ready" style="font-size:13px"></div></div>
     <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute">None right now. The AI compares every player with their own baseline.</div></div>
     <div class="card">
@@ -126,7 +138,7 @@
 const $ = id => document.getElementById(id);
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 const LINE_X = {GK: 7, DEF: 26, MID: 50, FWD: 77};
-let id, state, timer, hist = {}, selected = null, pos = {}, anim = null;
+let id, state, timer, hist = {}, selected = null, pos = {}, anim = null, roles = {}, preview = null, heat = {opp: {}, us: {}};
 
 const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail)));
 const log = t => { const d = document.createElement('div'); d.textContent = t; $('log').prepend(d); };
@@ -156,7 +168,7 @@ function place() {
     const mv = state.moves[p.name], dir = mv ? (LINES.indexOf(mv.split('->')[1]) > LINES.indexOf(mv.split('->')[0]) ? 'mvfwd' : 'mvback') : '';
     el.className = `pl ${f.cls} ${dir}`; el.style.left = x + '%'; el.style.top = y + '%';
     el.querySelector('.dot').innerHTML = initials(p.name) + (mv ? `<span class="badgemv">${dir === 'mvfwd' ? '↑' : '↓'}</span>` : '');
-    el.querySelector('.tag').innerHTML = `${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}`;
+    el.querySelector('.tag').innerHTML = `${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}${roles[p.name] && roles[p.name] !== 'holds shape' ? `<br><small style="color:#cbd5e1">${roles[p.name]}</small>` : ''}`;
   });
   document.querySelectorAll('.pl').forEach(el => { if (!state.xi.some(p => p.name === el.dataset.name)) el.remove(); });
   Object.entries(pos).filter(([n]) => n.includes('#')).forEach(([n, [x, y]]) => {
@@ -167,29 +179,88 @@ function place() {
   if (pos.ball) { $('ball').hidden = false; $('ball').style.left = pos.ball[0] + '%'; $('ball').style.top = pos.ball[1] + '%'; }
 }
 
-function play(frames) {  // one frame per simulated minute
-  clearInterval(anim); let i = 0; frameLive = true;
-  anim = setInterval(() => { if (i >= frames.length) return clearInterval(anim); Object.assign(pos, frames[i++]); place(); }, 220);
+const ARROW = '<defs><marker id="ah" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#fbbf24"/></marker></defs>';
+const mean = a => a.reduce((s, x) => s + x, 0) / (a.length || 1);
+
+function overlay() {
+  if (!state) return;
+  const on = $('showov').checked, i = preview || state.instructions;
+  $('ov').style.display = $('ovl').style.display = on ? '' : 'none';
+  document.querySelectorAll('.tgt').forEach(e => e.remove());
+  if (!on) return;
+  const ours = state.xi.filter(p => state.lines[p.name] === 'DEF').map(p => pos[p.name]?.[0]).filter(x => x != null);
+  const nd = +state.their_formation[0], opp = Object.keys(pos).filter(n => n.includes('#')).sort((a, b) => a.split('#')[1] - b.split('#')[1]).slice(1, 1 + nd).map(n => pos[n][0]);
+  const xp = 25 + i.press * 0.5, f = 0.6 + 0.8 * i.width / 100, wy = [50 - 30 * f, 50 + 30 * f];
+  const k = 1 + Math.round(i.box / 100 * 3), near = 40;
+  let g = ARROW;
+  g += `<rect x="${xp}" y="0" width="${100 - xp}" height="100" fill="#6ea8ff" opacity=".12"/><line x1="${xp}" y1="0" x2="${xp}" y2="100" stroke="#6ea8ff" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`;
+  if (ours.length) g += `<line x1="${mean(ours)}" y1="0" x2="${mean(ours)}" y2="100" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 3" opacity=".8" vector-effect="non-scaling-stroke"/>`;
+  if (opp.length) g += `<line x1="${mean(opp)}" y1="0" x2="${mean(opp)}" y2="100" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>`;
+  wy.forEach(y => g += `<line x1="8" y1="${y}" x2="62" y2="${y}" stroke="#fff" stroke-width="1" stroke-dasharray="1 5" opacity=".5" vector-effect="non-scaling-stroke"/>`);
+  const arrows = i.cross >= 50 ? [[64, 8, 90, 38], [64, 92, 90, 62]] : [[62, 28, 90, 44], [62, 72, 90, 56]];  // wide crosses vs half-space passes
+  arrows.forEach(([a, b, c, d]) => g += `<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="#fbbf24" stroke-width="${1 + Math.abs(i.cross - 50) / 12}" marker-end="url(#ah)" vector-effect="non-scaling-stroke"/>`);
+  const bx = 10 + i.direct * 0.5;  // fast build-up is one long arrow, patient is a few short hops
+  g += i.direct >= 60 ? `<line x1="10" y1="50" x2="${bx}" y2="50" stroke="#34d399" stroke-width="3" marker-end="url(#ah)" vector-effect="non-scaling-stroke"/>`
+    : [0, 1, 2, 3].map(n => `<line x1="${10 + n * 9}" y1="${44 + (n % 2) * 12}" x2="${17 + n * 9}" y2="${56 - (n % 2) * 12}" stroke="#34d399" stroke-width="2" marker-end="url(#ah)" vector-effect="non-scaling-stroke"/>`).join('');
+  $('ov').innerHTML = g;
+  const lab = (x, y, t, c = '#fff') => `<div class="ol" style="left:${x}%;top:${y}%;color:${c}">${t}</div>`;
+  $('ovl').innerHTML = lab(xp + 8, 2, `Press zone (${i.press})`, '#9cc4ff') + (ours.length ? lab(mean(ours), 94, 'Our line') : '') + (opp.length ? lab(mean(opp), 2, 'Their line', '#c4b5fd') : '')
+    + lab(35, wy[0] - 5, `Width ${i.width}`) + lab(bx > 30 ? bx / 1.6 : 20, 56, i.direct >= 60 ? 'Fast, direct: 1-2 passes' : i.direct <= 35 ? 'Patient build-up' : 'Mixed build-up', '#6ee7b7')
+    + lab(77, i.cross >= 50 ? 12 : 22, i.cross >= 50 ? 'Crosses into the box' : 'Inside passes and cutbacks', '#fcd34d');
+  [[92, near, 'near post'], [88, 50, 'spot'], [92, 100 - near, 'far post'], [80, 50, 'edge']].forEach(([x, y, t], n) => {
+    const d = document.createElement('div'); d.className = 'tgt' + (n < k ? ' on' : ''); d.style.left = x + '%'; d.style.top = y + '%'; d.textContent = n + 1; d.title = t; $('pitch').append(d);
+  });
+}
+$('showov').onchange = overlay;
+
+const ZONE = ['their third', 'midfield', 'our third'], CHAN = ['left', 'centre', 'right'];
+function heatmap() {
+  const which = $('heatsel').value, cv = $('heat'), ctx = cv.getContext('2d');
+  cv.width = cv.clientWidth; cv.height = cv.clientHeight; ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!which) { $('heatcap').textContent = ''; return; }
+  const h = heat[which], cells = Object.entries(h), top = Math.max(1, ...cells.map(([, v]) => v)), tot = cells.reduce((s, [, v]) => s + v, 0) || 1;
+  cells.forEach(([key, v]) => { const [cx, cy] = key.split(',').map(Number); ctx.fillStyle = `rgba(255,${Math.round(200 - 160 * v / top)},40,${0.15 + 0.6 * v / top})`; ctx.fillRect(cx * cv.width / 12, cy * cv.height / 8, cv.width / 12, cv.height / 8); });
+  const zone = key => { const [cx, cy] = key.split(',').map(Number); const t = Math.floor(cx / 4); return `${CHAN[Math.floor(cy / 8 * 3)]} of ${which === 'opp' ? ZONE[2 - t] : ['our third', 'midfield', 'their third'][t]}`; };
+  const best = cells.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, v]) => `${zone(k)} (${Math.round(v / tot * 100)}% of the time)`);
+  $('heatcap').textContent = best.length ? `${which === 'opp' ? $('oppname').textContent : 'Redmoor'} spend most time in: ${best.join(' and ')}.` : 'Play a few minutes to build the heatmap.';
+}
+$('heatsel').onchange = heatmap;
+function record() {
+  Object.entries(pos).forEach(([n, [x, y]]) => { if (n === 'ball') return; const side = n.includes('#') ? 'opp' : 'us', key = `${Math.min(11, Math.floor(x / 100 * 12))},${Math.min(7, Math.floor(y / 100 * 8))}`; heat[side][key] = (heat[side][key] || 0) + 1; });
 }
 
-const SLIDERS = {press: 'Press', line: 'Line height', width: 'Width', tempo: 'Tempo'};
+function play(frames) {  // one frame per simulated minute
+  clearInterval(anim); let i = 0; frameLive = true;
+  anim = setInterval(() => { if (i >= frames.length) return clearInterval(anim); Object.assign(pos, frames[i++]); place(); record(); overlay(); heatmap(); }, 220);
+}
+
+const SLIDERS = {press: 'Press', line: 'Line height', width: 'Width', tempo: 'Tempo', direct: 'Build-up speed', cross: 'Crosses vs inside', box: 'Box occupation'};
 function sliders() {
   if (!$('sliders').children.length) {
-    $('sliders').innerHTML = Object.entries(SLIDERS).map(([k, l]) => `<div class="sl"><span>${l}</span><input type="range" min="0" max="100" step="5" data-k="${k}"><b id="v-${k}">50</b></div>`).join('');
-    document.querySelectorAll('[data-k]').forEach(r => { r.oninput = () => $('v-' + r.dataset.k).textContent = r.value; r.onchange = () => send({instructions: {[r.dataset.k]: +r.value}}); });
+    $('sliders').innerHTML = Object.entries(SLIDERS).map(([k, l]) => `<div class="sl"><span>${l}</span><input type="range" min="0" max="100" step="5" data-k="${k}"><b id="v-${k}">50</b><div class="slnote" id="n-${k}"></div></div>`).join('');
+    document.querySelectorAll('[data-k]').forEach(r => { r.oninput = () => { $('v-' + r.dataset.k).textContent = r.value; preview = {...state.instructions, [r.dataset.k]: +r.value}; overlay(); }; r.onchange = () => { preview = null; send({instructions: {[r.dataset.k]: +r.value}}); }; });
   }
-  document.querySelectorAll('[data-k]').forEach(r => { r.value = state.instructions[r.dataset.k]; $('v-' + r.dataset.k).textContent = r.value; });
+  document.querySelectorAll('[data-k]').forEach(r => { r.value = state.instructions[r.dataset.k]; $('v-' + r.dataset.k).textContent = r.value; const e = state.explain[r.dataset.k]; $('n-' + r.dataset.k).innerHTML = `${e.does}<br><b>Now:</b> ${e.now}`; });
   $('custom').textContent = state.mentality === 'custom' ? 'custom' : state.mentality;
   $('ready').innerHTML = state.concerns.length ? state.concerns.map(c => `<div style="margin:5px 0">⚠ ${c}</div>`).join('') : '<span class="mute">Everyone in the XI is ready.</span>';
+}
+
+function fitCard() {
+  const f = state.playerfit;
+  const needs = Object.entries(f.needs).map(([l, ns]) => `<div style="margin:4px 0"><b>${l}</b> needs ${ns.map(n => `<span title="${n.reason}" style="border-bottom:1px dotted var(--mute)">${n.attr}</span>`).join(', ')}</div>`).join('');
+  const ideas = f.ideas.length ? f.ideas.map((i, k) => `<div style="margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px"><b>${i.on}</b> (${f.players[i.on].archetype}) for <b>${i.off}</b> (${f.players[i.off].archetype}): +${i.gain} fit<div class="mute" style="font-size:12px">${i.why.join('; ')}</div><button data-idea="${k}" style="margin-top:6px;padding:3px 10px">Make this change</button></div>`).join('') : '<div class="mute">No bench player fits this plan better than the XI.</div>';
+  $('fit').innerHTML = `<div class="mute" style="margin-bottom:6px">vs ${$('oppname').textContent}, ${state.formation}, ${state.mentality} plan</div>${needs}<div style="margin-top:8px"><b>Swap ideas</b></div>${ideas}`;
+  document.querySelectorAll('[data-idea]').forEach(b => b.onclick = () => { const i = f.ideas[b.dataset.idea]; send({transcript: `take off ${i.off}, bring on ${i.on}`}); });
 }
 
 function render() {
   $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
   $('clock').textContent = `${state.minute}'`;
   $('prog').style.width = `${state.minute / 90 * 100}%`;
-  layout(); place(); sliders();
-  $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${p.position} ${p.rating}</small></span>`).join('');
-  document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === state.mentality));
+  layout(); place(); sliders(); fitCard(); overlay();
+  $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${state.playerfit.players[p.name].archetype} · fit ${state.playerfit.players[p.name].fit}</small></span>`).join('');
+  if (!$('presets').children.length) $('presets').innerHTML = state.presets.map(m => `<button data-m="${m}">${m}</button>`).join('');
+  document.querySelectorAll('[data-m]').forEach(b => { b.onclick = () => send({mentality: b.dataset.m}); b.classList.toggle('on', b.dataset.m === state.mentality); });
   $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
   $('formation').value = state.formation;
   const t = state.tactics, cls = {'Best fit': 'ok', 'Good fit': 'ok', 'Risky': 'bad'}[t.verdict];
@@ -210,10 +281,11 @@ $('ask').onclick = staff;
 function openPop(el) {
   const p = state.xi.find(x => x.name === el.dataset.name), f = info(p.name), line = state.lines[p.name];
   selected = p.name;
-  $('pn').textContent = p.name;
-  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline · wellness ${state.wellness[p.name].hooper}/28` + (f.hr ? ` · HR ${f.hr} · output ${f.drop > 0 ? '-' : '+'}${Math.abs(Math.round(f.drop * 100))}%` : '');
-  const bench = [...state.bench].sort((a, b) => (b.position === line) - (a.position === line) || b.rating - a.rating);
-  $('psub').innerHTML = `<option value="">Choose replacement...</option>` + bench.map(b => `<option value="${b.name}">${b.name} (${b.position}, ${b.rating})</option>`).join('');
+  const pf = state.playerfit.players[p.name];
+  $('pn').textContent = `${p.name} · ${pf.archetype}`;
+  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline · wellness ${state.wellness[p.name].hooper}/28 · fit ${pf.fit}` + (roles[p.name] ? ` · now: ${roles[p.name]}` : '') + (f.hr ? ` · HR ${f.hr} · output ${f.drop > 0 ? '-' : '+'}${Math.abs(Math.round(f.drop * 100))}%` : '');
+  const bench = [...state.bench].sort((a, b) => (b.position === line) - (a.position === line) || state.playerfit.players[b.name].fit - state.playerfit.players[a.name].fit);
+  $('psub').innerHTML = `<option value="">Choose replacement...</option>` + bench.map(b => `<option value="${b.name}">${b.name} · ${state.playerfit.players[b.name].archetype} · fit ${state.playerfit.players[b.name].fit}</option>`).join('');
   const pop = $('pop'); pop.style.left = el.style.left; pop.style.top = el.style.top; pop.hidden = false;
   pop.style.transform = parseFloat(el.style.top) > 60 ? 'translate(-50%,calc(-100% - 36px))' : 'translate(-50%,36px)';
 }
@@ -252,7 +324,7 @@ async function step() {
     state = r;
     r.tick.snaps.forEach(s => (hist[s.player] ||= []).push(s));
     r.tick.events.forEach(e => log(`${e.minute}' ${e.team}: ${e.detail.goal ? 'GOAL' : 'shot'} (${e.player}, xG ${e.detail.xg})`));
-    render(); play(r.tick.frames); suggest(r.alerts);
+    roles = r.tick.roles; render(); play(r.tick.frames); suggest(r.alerts);
     if (r.alerts.length) { stop(); staff(); }  // pause so the coach decides
   } catch (e) { stop(); }
   if (state.minute >= 90) { stop(); log('Full time'); }
@@ -262,7 +334,6 @@ $('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 
 $('step').onclick = step;
 $('formation').onchange = e => send({formation: e.target.value});
 $('cmdform').onsubmit = e => { e.preventDefault(); const t = $('cmd').value.trim(); if (t) { send({transcript: t}); $('cmd').value = ''; } };
-document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => send({mentality: b.dataset.m}));
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 if (!SR) $('mic').style.display = 'none';

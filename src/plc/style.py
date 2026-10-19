@@ -32,6 +32,14 @@ def classify(shapes: list[Shape]) -> list[Style]:
         out.append(Style("lateral play", f"{a['lateral_pct']}% of passes go sideways"))
     if a["fwd_pct"] >= 45:
         out.append(Style("direct play", f"{a['fwd_pct']}% of passes go forward"))
+    if a["def_line"] <= 36 and a["fwd_pct"] >= 44:
+        out.append(Style("counter-attacking", f"deep block ({a['def_line']}) with {a['fwd_pct']}% forward passes and {a['possession']}% possession"))
+    if a["cross_pct"] >= 60:
+        out.append(Style("cross-heavy", f"{a['cross_pct']}% of box entries are crosses"))
+    elif a["cross_pct"] <= 35:
+        out.append(Style("inside combinations", f"only {a['cross_pct']}% of box entries are crosses; the rest cutbacks and inside passes"))
+    if a["box_players"] >= 3.5:
+        out.append(Style("crowds the box", f"{a['box_players']} players in the box when chances are created"))
     if a["wide_pct"] >= 50:
         out.append(Style("wing play", f"{a['wide_pct']}% of attacks use the wide channels"))
     return out
