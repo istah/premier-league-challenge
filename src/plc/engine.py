@@ -14,7 +14,7 @@ from .tracking import Snapshot
 from .training import run_training
 
 ORDER = {"DEF": 0, "MID": 1, "FWD": 2}
-OUT_OF_POSITION = 0.93  # strength multiplier for a player used outside their natural line
+PENALTY = {0: 1.0, 1: 0.95, 2: 0.88}  # strength multiplier by how many lines a player is moved from his natural one
 MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)}  # (our chances, their chances)
 
 
@@ -67,8 +67,14 @@ class Match:
         played = self.minute - self.entered[p.name]
         return max(0, played - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
 
+    def distance(self, p: Player) -> int:
+        return abs(ORDER.get(self.line[p.name], 0) - ORDER.get(p.position, 0))
+
+    def moves(self) -> dict[str, str]:
+        return {p.name: f"{p.position}->{self.line[p.name]}" for p in self.xi if self.line[p.name] != p.position}
+
     def strength(self) -> float:
-        return sum(p.rating * (1 - self.fade(p)) * (1 if self.line[p.name] == p.position else OUT_OF_POSITION) for p in self.xi) / len(self.xi)
+        return sum(p.rating * (1 - self.fade(p)) * PENALTY[self.distance(p)] for p in self.xi) / len(self.xi)
 
     def substitute(self, off: str, on: str) -> None:
         out, inn = next(p for p in self.xi if p.name == off), next(p for p in self.bench if p.name == on)
@@ -77,10 +83,11 @@ class Match:
         self.line[inn.name] = self.line.pop(out.name)
 
     def set_formation(self, formation: str) -> None:
-        """Re-deals the outfield into the new lines, keeping players in their natural order, so some may end up out of position."""
+        """Re-deals the outfield into the new lines from natural positions, so players shift along the chain (a midfielder drops into defence, a forward into midfield).
+        Within a line the lowest-rated players are dealt first, so the strongest keep their natural role. A modelling choice."""
         if formation not in FORMATIONS:
             return
-        outfield = sorted((p for p in self.xi if self.line[p.name] != "GK"), key=lambda p: ORDER[p.position])
+        outfield = sorted((p for p in self.xi if self.line[p.name] != "GK"), key=lambda p: (ORDER[p.position], p.rating))
         lines = [line for line, n in zip(("DEF", "MID", "FWD"), FORMATIONS[formation]) for _ in range(n)]
         self.line.update({p.name: line for p, line in zip(outfield, lines)})
         self.formation = formation

@@ -34,7 +34,7 @@ class Command(BaseModel):
 
 def _state(m: Match) -> dict:
     return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": {f: assess(f, m.profile).verdict for f in FORMATIONS}, "recommended": recommend(m.profile),
-            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [p.name for p in m.xi if m.line[p.name] != p.position], "lines": m.line, "xi": [asdict(p) for p in m.xi],
+            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 
 

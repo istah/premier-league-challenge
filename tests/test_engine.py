@@ -48,3 +48,12 @@ def test_frames_place_22_players_and_ball_in_bounds_and_high_block_sits_high():
     assert all(0 <= v <= 100 for f in t.frames for xy in f.values() for v in xy)
     opp_defenders = [t.frames[0][f"{m.opponent} #{i}"][0] for i in range(2, 6)]
     assert max(opp_defenders) < 60  # a pressing side defends near the halfway line, not on its own box
+
+
+def test_formation_change_moves_players_along_the_chain():
+    m, _ = _match()
+    m.set_formation("5-3-2")  # one more defender, one fewer forward: a midfielder drops back and a forward drops into midfield
+    assert sorted(m.moves().values()) == ["FWD->MID", "MID->DEF"]
+    assert m.strength() < _match()[0].strength()
+    m.set_formation("4-3-3")
+    assert m.moves() == {}  # back to natural roles, nothing accumulates

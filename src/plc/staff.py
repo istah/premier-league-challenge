@@ -25,7 +25,7 @@ def gold_facts(m: Match) -> dict:
         "their_style": [asdict(s) for s in classify([h["them"] for h in recent])],
         "their_shifts": shifts(m.shapes, "them"), "our_shifts": shifts(m.shapes, "us"),
         "tactical_read": asdict(assess(m.formation, m.profile)), "recommended_formation": recommend(m.profile),
-        "out_of_position": [p.name for p in m.xi if m.line[p.name] != p.position],
+        "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()],
     }
 
 

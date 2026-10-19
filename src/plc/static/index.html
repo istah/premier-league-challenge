@@ -7,7 +7,8 @@
 <style>
   :root { --bg:#0b0f14; --card:#131a22; --card2:#1a232d; --line:#26323f; --text:#eaf0f6; --mute:#8a9bad; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --accent:#6ea8ff; --r:16px; }
   * { box-sizing:border-box; }
-  body { margin:0; background:radial-gradient(1200px 600px at 20% -10%, #16314d55, transparent), var(--bg); color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif; min-height:100vh; }
+  html, body { height:100%; overflow:hidden; }
+  body { margin:0; display:flex; flex-direction:column; background:radial-gradient(1200px 600px at 20% -10%, #16314d55, transparent), var(--bg); color:var(--text); font:15px/1.45 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif; min-height:100vh; }
   header { display:flex; align-items:center; gap:18px; padding:16px 28px; }
   .brand { font-weight:700; letter-spacing:-.01em; font-size:17px; }
   .brand small { display:block; font-weight:500; font-size:11px; color:var(--mute); letter-spacing:.08em; text-transform:uppercase; }
@@ -17,8 +18,11 @@
   .clock { font-variant-numeric:tabular-nums; color:var(--accent); font-weight:600; }
   .bar { height:3px; background:var(--line); margin:0 28px; border-radius:3px; overflow:hidden; }
   .bar i { display:block; height:100%; width:0; background:linear-gradient(90deg,var(--accent),var(--ok)); transition:width .4s; }
-  main { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:20px; padding:20px 28px 40px; }
-  @media (max-width:980px){ main { grid-template-columns:1fr; } }
+  main { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) 400px; gap:20px; padding:16px 28px 20px; }
+  main > section { min-height:0; display:flex; flex-direction:column; }
+  main > aside { min-height:0; overflow-y:auto; padding-right:6px; }
+  .stage { flex:1; min-height:0; display:grid; place-items:center; }
+  @media (max-width:980px){ main { grid-template-columns:1fr 340px; } }
   .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:16px; }
   .card h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--mute); font-weight:600; }
   .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
@@ -28,10 +32,12 @@
   button.primary { background:var(--accent); color:#06121f; border-color:var(--accent); font-weight:600; }
   button.on { background:#6ea8ff22; border-color:var(--accent); color:var(--accent); }
   .seg { display:inline-flex; gap:4px; }
-  .pitch { position:relative; aspect-ratio:100/64; border-radius:var(--r); border:1px solid #ffffff22; overflow:hidden;
+  .pitch { position:relative; aspect-ratio:100/64; width:min(100%, calc((100vh - 230px) * 100 / 64)); max-height:100%; border-radius:var(--r); border:1px solid #ffffff22; overflow:hidden;
     background:repeating-linear-gradient(90deg,#1b6b45 0 10%,#1e744a 10% 20%); box-shadow:0 20px 50px #0008; }
   .pitch svg { position:absolute; inset:0; width:100%; height:100%; }
-  .pl { position:absolute; transform:translate(-50%,-50%); text-align:center; cursor:pointer; transition:left .6s, top .6s; }
+  .pl { position:absolute; transform:translate(-50%,-50%); text-align:center; cursor:pointer; transition:left .24s linear, top .24s linear; }
+  .opp { position:absolute; width:14px; height:14px; border-radius:50%; background:#f8fafc; border:2px solid #7c3aed; transform:translate(-50%,-50%); transition:left .24s linear, top .24s linear; opacity:.9; }
+  .ball { position:absolute; width:11px; height:11px; border-radius:50%; background:#fff; box-shadow:0 0 0 2px #000a, 0 0 12px #fff; transform:translate(-50%,-50%); transition:left .24s linear, top .24s linear; z-index:3; }
   .dot { width:38px; height:38px; border-radius:50%; margin:auto; display:grid; place-items:center; font-weight:700; font-size:12px; color:#06121f;
     border:2px solid #fff; box-shadow:0 4px 14px #0007; transition:background .4s, transform .15s; }
   .pl:hover .dot { transform:scale(1.12); }
@@ -39,6 +45,10 @@
   @keyframes pulse { 50% { box-shadow:0 0 0 8px #f8717133; } }
   .tag { margin-top:3px; font-size:11px; font-weight:600; background:#000a; padding:1px 7px; border-radius:6px; white-space:nowrap; }
   .tag small { color:#cbd5e1; font-weight:500; }
+  .badgemv { position:absolute; top:-6px; right:-8px; min-width:18px; height:18px; border-radius:9px; font-size:11px; font-weight:800; display:grid; place-items:center; color:#fff; border:2px solid #0b0f14; }
+  .mvback .badgemv { background:#7c3aed; } .mvfwd .badgemv { background:#ea580c; }
+  .mvback .dot { outline:3px solid #7c3aed88; } .mvfwd .dot { outline:3px solid #ea580c88; }
+  .dot { position:relative; }
   .hint { color:var(--mute); font-size:12.5px; margin-top:10px; }
   .pop { position:absolute; z-index:5; width:230px; background:#0f161d; border:1px solid var(--accent); border-radius:14px; padding:14px; box-shadow:0 18px 40px #000c; transform:translate(-50%,14px); }
   .pop[hidden] { display:none; }
@@ -71,17 +81,17 @@
       <span class="mute sp">Approach</span>
       <span class="seg"><button data-m="defend">Defend</button><button data-m="balanced">Balanced</button><button data-m="attack">Attack</button></span>
     </div>
-    <div class="pitch" id="pitch">
+    <div class="stage"><div class="pitch" id="pitch">
       <svg viewBox="0 0 100 64" preserveAspectRatio="none"><g stroke="#ffffff88" stroke-width=".3" fill="none">
         <rect x="1" y="1" width="98" height="62"/><line x1="50" y1="1" x2="50" y2="63"/><circle cx="50" cy="32" r="7"/>
         <rect x="1" y="17" width="15" height="30"/><rect x="84" y="17" width="15" height="30"/></g></svg>
-      <div id="players"></div>
+      <div id="opps"></div><div class="ball" id="ball" hidden></div><div id="players"></div>
       <div class="pop" id="pop" hidden>
         <h3 id="pn"></h3><p id="pi"></p>
         <select id="psub"></select>
         <div class="row"><button class="primary" id="pgo">Take off</button><button id="pcancel">Cancel</button></div>
       </div>
-    </div>
+    </div></div>
     <div class="hint">Dot colour = output vs the player's own first half: green steady, amber slipping, red fading. Click a player to substitute.</div>
   </section>
   <aside>
@@ -89,6 +99,7 @@
       <h2>Tactical read vs <span id="oppname">opponent</span></h2>
       <div id="tac"></div>
     </div>
+    <div class="card"><h2>Staff room <button id="ask" style="float:right;padding:2px 10px">Ask the staff</button></h2><div id="staff" class="mute" style="font-size:13px">Opponent, style and tactics analysts report here once the match is under way.</div></div>
     <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute">None right now. The AI compares every player with their own baseline.</div></div>
     <div class="card">
       <h2>Your call (always wins)</h2>
@@ -105,8 +116,9 @@
 </main>
 <script>
 const $ = id => document.getElementById(id);
+const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 const LINE_X = {GK: 7, DEF: 26, MID: 50, FWD: 77};
-let id, state, timer, hist = {}, selected = null;
+let id, state, timer, hist = {}, selected = null, pos = {}, anim = null;
 
 const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail)));
 const log = t => { const d = document.createElement('div'); d.textContent = t; $('log').prepend(d); };
@@ -121,18 +133,42 @@ function info(name) {
   return {cls: drop > 0.18 ? 'bad' : drop > 0.08 ? 'warn' : 'ok', drop, hr: h.at(-1).hr};
 }
 
+function layout() {  // formation layout until the engine sends live positions
+  const groups = {};
+  state.xi.forEach(p => (groups[state.lines[p.name]] ||= []).push(p));
+  Object.entries(groups).forEach(([line, ps]) => ps.forEach((p, i) => { if (!frameLive || !pos[p.name]) pos[p.name] = [LINE_X[line], (i + 1) / (ps.length + 1) * 100]; }));
+}
+let frameLive = false;
+
+function place() {
+  state.xi.forEach(p => {
+    let el = document.querySelector(`.pl[data-name="${p.name}"]`);
+    if (!el) { el = document.createElement('div'); el.className = 'pl'; el.dataset.name = p.name; el.innerHTML = '<div class="dot"></div><div class="tag"></div>'; el.onclick = e => { e.stopPropagation(); openPop(el); }; $('players').append(el); }
+    const f = info(p.name), [x, y] = pos[p.name] || [50, 50];
+    const mv = state.moves[p.name], dir = mv ? (LINES.indexOf(mv.split('->')[1]) > LINES.indexOf(mv.split('->')[0]) ? 'mvfwd' : 'mvback') : '';
+    el.className = `pl ${f.cls} ${dir}`; el.style.left = x + '%'; el.style.top = y + '%';
+    el.querySelector('.dot').innerHTML = initials(p.name) + (mv ? `<span class="badgemv">${dir === 'mvfwd' ? '↑' : '↓'}</span>` : '');
+    el.querySelector('.tag').innerHTML = `${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}`;
+  });
+  document.querySelectorAll('.pl').forEach(el => { if (!state.xi.some(p => p.name === el.dataset.name)) el.remove(); });
+  Object.entries(pos).filter(([n]) => n.includes('#')).forEach(([n, [x, y]]) => {
+    let el = document.querySelector(`.opp[data-name="${n}"]`);
+    if (!el) { el = document.createElement('div'); el.className = 'opp'; el.dataset.name = n; el.title = n; $('opps').append(el); }
+    el.style.left = x + '%'; el.style.top = y + '%';
+  });
+  if (pos.ball) { $('ball').hidden = false; $('ball').style.left = pos.ball[0] + '%'; $('ball').style.top = pos.ball[1] + '%'; }
+}
+
+function play(frames) {  // one frame per simulated minute
+  clearInterval(anim); let i = 0; frameLive = true;
+  anim = setInterval(() => { if (i >= frames.length) return clearInterval(anim); Object.assign(pos, frames[i++]); place(); }, 220);
+}
+
 function render() {
   $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
   $('clock').textContent = `${state.minute}'`;
   $('prog').style.width = `${state.minute / 90 * 100}%`;
-  const groups = {};
-  state.xi.forEach(p => (groups[state.lines[p.name]] ||= []).push(p));
-  $('players').innerHTML = Object.entries(groups).flatMap(([line, ps]) => ps.map((p, i) => {
-    const y = (i + 1) / (ps.length + 1) * 100, f = info(p.name);
-    return `<div class="pl ${f.cls}" data-name="${p.name}" style="left:${LINE_X[line]}%;top:${y}%"><div class="dot">${initials(p.name)}</div>
-      <div class="tag">${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}</div></div>`;
-  })).join('');
-  document.querySelectorAll('.pl').forEach(el => el.onclick = e => { e.stopPropagation(); openPop(el); });
+  layout(); place();
   $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${p.position} ${p.rating}</small></span>`).join('');
   document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === state.mentality));
   $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
@@ -141,10 +177,16 @@ function render() {
   $('tac').innerHTML = `<span class="badge ${cls}">${t.formation}: ${t.verdict}</span>
     ${state.formation !== state.recommended ? `<button style="margin-left:8px;padding:3px 10px" id="usebest">Use ${state.recommended}</button>` : ''}
     <ul style="padding-left:18px;margin:10px 0 6px">${t.reasons.map(r => `<li>${r}</li>`).join('')}</ul>
-    ${state.out_of_position.length ? `<div class="mute" style="font-size:13px">Out of position (-7%): ${state.out_of_position.join(', ')}</div>` : ''}
+    ${Object.keys(state.moves).length ? `<div style="font-size:13px;margin-top:6px"><b>Role changes</b>${Object.entries(state.moves).map(([n, mv]) => { const [a, b] = mv.split('->'), up = LINES.indexOf(b) > LINES.indexOf(a), pl = state.xi.find(p => p.name === n); return `<div>${up ? '↑ pushed forward' : '↓ dragged back'}: <b>${n}</b> (${pl.rating}), natural ${a} → now ${b}${Math.abs(LINES.indexOf(b) - LINES.indexOf(a)) > 1 ? ', two lines away (-12%)' : ' (-5%)'}</div>`; }).join('')}</div>` : ''}
     <div style="margin-top:10px;font-size:13px">${Object.entries(t.movements).map(([l, m]) => `<div style="margin:5px 0"><b>${l}</b> ${m}</div>`).join('')}</div>`;
   if ($('usebest')) $('usebest').onclick = () => send({formation: state.recommended});
 }
+
+async function staff() {
+  const r = await fetch(`/match/${id}/briefing`).then(r => r.json());
+  $('staff').innerHTML = r.notes.length ? r.notes.map(n => `<div style="margin:6px 0"><b>${n.agent}</b> ${n.claim}<div class="mute" style="font-size:11px">from: ${n.source}</div></div>`).join('') + `<div class="mute" style="font-size:11px">${r.mode === 'agents' ? 'Foundry agents' : 'offline briefing (same facts, no model)'}</div>` : 'Kick off first.';
+}
+$('ask').onclick = staff;
 
 function openPop(el) {
   const p = state.xi.find(x => x.name === el.dataset.name), f = info(p.name), line = state.lines[p.name];
@@ -191,8 +233,8 @@ async function step() {
     state = r;
     r.tick.snaps.forEach(s => (hist[s.player] ||= []).push(s));
     r.tick.events.forEach(e => log(`${e.minute}' ${e.team}: ${e.detail.goal ? 'GOAL' : 'shot'} (${e.player}, xG ${e.detail.xg})`));
-    render(); suggest(r.alerts);
-    if (r.alerts.length) stop();  // pause so the coach decides
+    render(); play(r.tick.frames); suggest(r.alerts);
+    if (r.alerts.length) { stop(); staff(); }  // pause so the coach decides
   } catch (e) { stop(); }
   if (state.minute >= 90) { stop(); log('Full time'); }
 }
