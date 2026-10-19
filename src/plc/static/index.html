@@ -63,7 +63,13 @@
   .tabs button { flex:1; border:0; background:transparent; border-radius:9px; position:relative; }
   .tabs button.on { background:#6ea8ff22; color:var(--accent); font-weight:600; }
   .tabs i { position:absolute; top:5px; right:10px; width:8px; height:8px; border-radius:50%; background:var(--warn); display:none; }
-  .cmdbar { display:flex; gap:8px; margin-top:12px; }
+  .fab { position:absolute; right:12px; bottom:12px; z-index:6; width:44px; height:44px; border-radius:50%; font-size:18px; padding:0; background:#6ea8ff; color:#06121f; border-color:#6ea8ff; box-shadow:0 8px 24px #0009; }
+  .voice { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:7; display:flex; align-items:center; gap:10px; background:#0f161dee; border:1px solid var(--accent); border-radius:999px; padding:8px 16px; box-shadow:0 12px 30px #000b; min-width:360px; }
+  .voice input { flex:1; background:transparent; border:0; outline:0; color:var(--text); font:inherit; }
+  .toast { position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:8; background:#0f161df5; border:1px solid var(--line); border-radius:999px; padding:7px 16px; font-size:13px; box-shadow:0 8px 24px #000a; }
+  .callout { position:absolute; z-index:6; width:290px; transform:translateX(-50%); background:#0f161df5; border:1px solid var(--warn); border-radius:14px; padding:12px 14px; font-size:13px; box-shadow:0 16px 40px #000c; animation:rise .25s ease-out; }
+  .callout button { margin:8px 6px 0 0; padding:4px 10px; }
+  @keyframes rise { from { opacity:0; transform:translate(-50%,6px); } }
   .sl > span { cursor:pointer; border-bottom:1px dotted var(--mute); width:max-content; }
   .slnote { display:none; }
   .slnote.open { display:block; }
@@ -106,6 +112,10 @@
         <rect x="1" y="1" width="98" height="62"/><line x1="50" y1="1" x2="50" y2="63"/><circle cx="50" cy="32" r="7"/>
         <rect x="1" y="17" width="15" height="30"/><rect x="84" y="17" width="15" height="30"/></g></svg>
       <canvas class="heat" id="heat"></canvas><svg class="ov" id="ov" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="ovl"></div><div id="opps"></div><div class="ball" id="ball" hidden></div><div id="players"></div>
+      <button class="fab" id="fab" title="Press V and speak. Dictation tools also work: they type into the box that appears.">🎙</button>
+      <div class="voice" id="voice" hidden><span class="mute">Listening…</span><input type="text" id="vtext" placeholder="say or dictate your call" autocomplete="off"></div>
+      <div class="toast" id="toast" hidden></div>
+      <div class="callout" id="callout" hidden></div>
       <div class="pop" id="pop" hidden>
         <h3 id="pn"></h3><p id="pi"></p>
         <div class="row" style="margin-bottom:8px" id="pord"></div>
@@ -115,13 +125,7 @@
     </div></div>
     <div class="hint" id="heatcap"></div>
     <div class="hint" id="legend" style="display:none">Overlay: <b style="color:#6ea8ff">blue zone</b> = where we start pressing · <b>white dashed</b> = our back line · <b style="color:#a78bfa">purple dashed</b> = their back line · <b style="color:#fbbf24">arrows</b> = how we enter their box · yellow circles = players attacking the box.</div>
-    <form class="cmdbar" id="cmdform">
-      <input type="text" id="cmd" placeholder='Your call: "take off Vance, bring on Haas" · "four four two" · "press higher"' autocomplete="off">
-      <button class="primary">Send</button>
-      <button type="button" id="mic" title="Browser dictation. Any system-wide dictation tool also works in the text box.">Mic</button>
-    </form>
-    <div id="msg" class="hint" style="margin-top:6px"></div>
-    <div class="hint">Green = steady, amber = slipping, red = fading. Tap a player to substitute.</div>
+    <div class="hint">Green = steady, amber = slipping, red = fading. Tap a player to change them. Press <b>V</b> and say what you want.</div>
   </section>
   <aside>
     <div class="tabs">
@@ -129,7 +133,7 @@
     </div>
     <div class="tab" id="tab-now">
       <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute"></div></div>
-      <div class="card"><h2>Staff room <button id="ask" style="float:right;padding:2px 10px">Ask now</button></h2><div id="staff" class="mute" style="font-size:13px">Analysts report here once the match is under way.</div></div>
+      <div class="card"><h2>Staff notes</h2><div id="staff" class="mute" style="font-size:13px">Notes appear here, and on the pitch, as things happen.</div></div>
     </div>
     <div class="tab" id="tab-tactics" hidden>
       <div class="card"><h2>Formation vs <span id="oppname">opponent</span></h2><div id="tac"></div></div>
@@ -155,7 +159,8 @@ let peek = 0, id, state, timer, hist = {}, selected = null, pos = {}, anim = nul
 
 const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail)));
 const log = t => { const d = document.createElement('div'); d.textContent = t; $('log').prepend(d); };
-const say = t => $('msg').textContent = t;
+function toast(t, ms = 3500) { if (!t) return; const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, ms); }
+const say = toast;
 const initials = n => n.slice(0, 2).toUpperCase();
 
 function info(name) {
@@ -294,8 +299,8 @@ async function staff(route = 'full', why = 'You asked') {
   const r = await fetch(`/match/${id}/briefing?route=${route}`).then(r => r.json());
   if (!r.notes.length) return;
   feed.unshift({minute: state.minute, why, route, r}); feed = feed.slice(0, 5);
-  renderFeed();
-  if (route !== 'full' || why !== 'You asked') { $('b-now').style.display = 'block'; }
+  renderFeed(); callout(feed[0]);
+  $('b-now').style.display = 'block';
 }
 function act(a) {
   if (a.type === 'plan') return send({mentality: a.value});
@@ -313,7 +318,6 @@ function renderFeed() {
   }).join('') || 'Analysts report here as things happen on the pitch.';
   document.querySelectorAll('[data-feed]').forEach(b => b.onclick = () => { const [i, k, m] = b.dataset.feed.split('.'); act(feed[i].r.notes[k].actions[m]); b.disabled = true; b.textContent += ' ✓'; });
 }
-$('ask').onclick = () => staff('full', 'You asked');
 
 function openPop(el) {
   const p = state.xi.find(x => x.name === el.dataset.name), f = info(p.name), line = state.lines[p.name];
@@ -334,6 +338,7 @@ $('pcancel').onclick = () => $('pop').hidden = true;
 $('pgo').onclick = () => { const on = $('psub').value; if (!on) return $('psub').focus(); $('pop').hidden = true; send({off: selected, on}); };
 
 function tab(name) {
+  if (name === 'now') $('b-now').style.display = 'none';
   document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== 'tab-' + name);
   document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
 }
@@ -356,13 +361,14 @@ function suggest(alerts) {
 
 async function send(body) {
   try {
-    const before = state.formation, r = await post('/decision', body);
+    const was = JSON.stringify([state.formation, state.mentality, state.instructions, state.orders]), r = await post('/decision', body), before = state.formation;
     state = r;
-    if (r.applied) { log(`${state.minute}' ${r.applied.source === 'coach' ? 'Coach' : 'AI suggestion accepted'}: ${r.applied.off} off, ${r.applied.on} on`); say(''); suggest([]); }
-    else if (body.transcript && r.formation === before && !/attack|defen|balanced/i.test(body.transcript)) say("Didn't catch that. Try: take off <name>, bring on <name>.");
+    if (r.applied) { log(`${state.minute}' ${r.applied.source === 'coach' ? 'Coach' : 'AI suggestion accepted'}: ${r.applied.off} off, ${r.applied.on} on`); toast(`${r.applied.off} off, ${r.applied.on} on`); suggest([]); }
+    else if (JSON.stringify([r.formation, r.mentality, r.instructions, r.orders]) !== was) toast(r.formation !== before ? `Formation ${r.formation}` : 'Done');
+    else if (body.transcript) toast("Didn't catch that. Try 'take off Vance, bring on Haas'.");
     if (r.formation !== before) log(`${state.minute}' Formation: ${r.formation}`);
     render();
-  } catch (e) { say(String(e)); }
+  } catch (e) { toast(String(e)); }
 }
 
 async function step() {
@@ -383,11 +389,32 @@ $('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 
 $('step').onclick = step;
 $('plansel').onchange = e => e.target.value !== 'custom' && send({mentality: e.target.value});
 $('formation').onchange = e => send({formation: e.target.value});
-$('cmdform').onsubmit = e => { e.preventDefault(); const t = $('cmd').value.trim(); if (t) { send({transcript: t}); $('cmd').value = ''; } };
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-if (!SR) $('mic').style.display = 'none';
-else $('mic').onclick = () => { const r = new SR(); r.lang = 'en-GB'; r.onresult = e => { $('cmd').value = e.results[0][0].transcript; $('cmdform').requestSubmit(); }; r.start(); say('Listening...'); };
+let rec = null, idle = null;
+function voiceOpen() {
+  if (!$('voice').hidden) return;
+  $('voice').hidden = false; $('vtext').value = ''; $('vtext').focus();
+  if (SR) { rec = new SR(); rec.lang = 'en-GB'; rec.interimResults = true; rec.onresult = e => { $('vtext').value = [...e.results].map(r => r[0].transcript).join(' '); if (e.results[e.results.length - 1].isFinal) voiceSend(); }; try { rec.start(); } catch {} }
+}
+function voiceClose() { try { rec && rec.stop(); } catch {} rec = null; $('voice').hidden = true; clearTimeout(idle); }
+function voiceSend() { const t = $('vtext').value.trim(); voiceClose(); if (t) send({transcript: t}); }
+$('vtext').oninput = () => { clearTimeout(idle); idle = setTimeout(voiceSend, 1500); };  // dictation tools paste text: send once it settles
+$('vtext').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); voiceSend(); } if (e.key === 'Escape') voiceClose(); };
+$('fab').onclick = voiceOpen;
+document.addEventListener('keydown', e => { if ((e.key === 'v' || e.key === '/') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); voiceOpen(); } });
+
+let calloutT;
+function callout(item) {  // the staff speak on the pitch, next to the player they mean
+  const n = item.r.notes.find(n => n.actions?.length) || item.r.notes[0], el = $('callout');
+  if (!n) return;
+  const who = n.actions?.[0]?.off || n.actions?.[0]?.player, p = who && pos[who];
+  el.style.left = Math.min(75, Math.max(25, p ? p[0] : 50)) + '%'; el.style.top = (p ? (p[1] < 50 ? p[1] + 10 : p[1] - 38) : 6) + '%';
+  el.innerHTML = `<div class="mute" style="font-size:11px;margin-bottom:4px">${item.minute}' · ${item.why}</div><b>${n.agent}</b> ${n.claim}<div>${(n.actions || []).map((a, i) => `<button class="primary" data-co="${i}">${a.label}</button>`).join('')}<button data-co="x">Not now</button></div>`;
+  el.hidden = false;
+  el.querySelectorAll('[data-co]').forEach(b => b.onclick = () => { el.hidden = true; if (b.dataset.co !== 'x') act(n.actions[b.dataset.co]); });
+  clearTimeout(calloutT); calloutT = setTimeout(() => el.hidden = true, 15000);
+}
 
 fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; $('oppname').textContent = 'Harbour Rovers'; render(); suggest([]); });
 </script>
