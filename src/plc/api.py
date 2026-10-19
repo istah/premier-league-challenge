@@ -3,7 +3,10 @@ import re
 import uuid
 from dataclasses import asdict
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .coach import Decision, decide
@@ -12,6 +15,7 @@ from .live import live_alerts
 from .squad import Player
 
 app = FastAPI(title="Redmoor FC Coach Room")
+INDEX = Path(__file__).parent / "static" / "index.html"
 SESSIONS: dict[str, tuple[Match, list[Player]]] = {}
 
 
@@ -31,6 +35,11 @@ def _get(mid: str) -> tuple[Match, list[Player]]:
     if mid not in SESSIONS:
         raise HTTPException(404, "unknown match")
     return SESSIONS[mid]
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(INDEX)
 
 
 @app.post("/match")

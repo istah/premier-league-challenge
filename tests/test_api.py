@@ -19,3 +19,7 @@ def test_play_and_coach_override():
     assert out["applied"]["source"] == "coach" and out["applied"]["off"] == other
     assert out["mentality"] == "attack"
     assert c.post("/match/nope/tick").status_code == 404
+
+
+def test_index_served():
+    assert "Coach Room" in c.get("/").text

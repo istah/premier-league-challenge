@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redmoor FC Coach Room</title>
+<style>
+  :root { --bg:#0e1a14; --panel:#16251d; --line:#2b4236; --text:#e8f1ec; --mute:#8fa89b; --ok:#3ecf7a; --warn:#f2b84b; --bad:#ef5b5b; --accent:#5aa9ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.4 system-ui,sans-serif; }
+  header { display:flex; align-items:center; gap:20px; padding:12px 20px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; }
+  .score { font-size:28px; font-weight:700; letter-spacing:2px; }
+  .clock { color:var(--mute); }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:16px; padding:16px 20px; }
+  @media (max-width:900px){ main { grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
+  .panel h2 { margin:0 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--mute); }
+  svg#pitch { width:100%; background:#1d5a3a; border-radius:10px; display:block; }
+  .pl text { fill:#fff; font-size:2.3px; text-anchor:middle; paint-order:stroke; stroke:#000a; stroke-width:.5px; }
+  button { background:#223a2d; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 12px; font:inherit; cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#04121f; border-color:var(--accent); font-weight:600; }
+  button.on { border-color:var(--accent); color:var(--accent); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  input[type=text] { flex:1; min-width:0; background:#0b1510; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:9px 10px; font:inherit; }
+  .sug { border-left:4px solid var(--warn); padding-left:10px; }
+  .sug small, .mute { color:var(--mute); }
+  #log { max-height:200px; overflow:auto; font-size:13px; }
+  #log div { padding:2px 0; border-bottom:1px solid #ffffff10; }
+  .bench span { display:inline-block; margin:2px 4px 2px 0; padding:2px 8px; border:1px solid var(--line); border-radius:12px; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Redmoor FC Coach Room</h1>
+  <div class="score" id="score">0 - 0</div>
+  <div class="clock" id="clock">0'</div>
+  <div class="row" style="margin-left:auto">
+    <button id="play" class="primary">Play</button>
+    <button id="step">+5 min</button>
+  </div>
+</header>
+<main>
+  <section>
+    <svg id="pitch" viewBox="0 0 100 64">
+      <g stroke="#ffffff90" stroke-width=".3" fill="none">
+        <rect x="1" y="1" width="98" height="62"/><line x1="50" y1="1" x2="50" y2="63"/><circle cx="50" cy="32" r="7"/>
+        <rect x="1" y="17" width="15" height="30"/><rect x="84" y="17" width="15" height="30"/>
+      </g>
+      <g id="players"></g>
+    </svg>
+    <p class="mute">Dot colour = output vs own first half (green steady, amber slipping, red fading). Click a player to take them off.</p>
+  </section>
+  <aside>
+    <div class="panel" id="sugpanel">
+      <h2>AI suggestion</h2>
+      <div id="sug" class="mute">None right now. The AI watches every player against their own baseline.</div>
+    </div>
+    <div class="panel">
+      <h2>Your call (always wins)</h2>
+      <form class="row" id="cmdform">
+        <input type="text" id="cmd" placeholder='Type or dictate: "take off Vance, bring on Haas"' autocomplete="off">
+        <button class="primary">Send</button>
+        <button type="button" id="mic" title="Browser dictation. Any system-wide dictation tool also works in the text box.">Mic</button>
+      </form>
+      <div class="row" style="margin-top:10px">
+        <span class="mute">Approach:</span>
+        <button data-m="defend">Defend</button><button data-m="balanced" class="on">Balanced</button><button data-m="attack">Attack</button>
+      </div>
+      <div id="msg" class="mute" style="margin-top:8px"></div>
+    </div>
+    <div class="panel"><h2>Bench</h2><div class="bench" id="bench"></div></div>
+    <div class="panel"><h2>Match log</h2><div id="log"></div></div>
+  </aside>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+// 4-3-3 slots by index in the XI: GK, 4 DEF, 3 MID, 3 FWD. A substitute takes the slot of the player they replace.
+const SLOTS = [[8,32],[26,10],[24,24],[24,40],[26,54],[48,18],[44,32],[48,46],[74,12],[80,32],[74,52]];
+let id, state, timer, pending = null, hist = {};
+
+const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail)));
+const log = t => { const d = document.createElement('div'); d.textContent = t; $('log').prepend(d); };
+const say = t => $('msg').textContent = t;
+
+function form(name) {
+  const h = hist[name] || [];
+  if (h.length < 4) return 'ok';
+  const base = h.slice(0, 8), recent = h.slice(-3);
+  const avg = a => a.reduce((s, x) => s + x.distance_m, 0) / a.length;
+  const drop = 1 - avg(recent) / avg(base);
+  return drop > 0.18 ? 'bad' : drop > 0.08 ? 'warn' : 'ok';
+}
+
+function render() {
+  $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
+  $('clock').textContent = `${state.minute}'`;
+  $('players').innerHTML = state.xi.map((p, i) => {
+    const [x, y] = SLOTS[i], c = `var(--${form(p.name)})`, last = (hist[p.name] || []).at(-1);
+    return `<g class="pl" data-name="${p.name}" style="cursor:pointer"><circle cx="${x}" cy="${y}" r="3.2" fill="${c}" stroke="#fff" stroke-width=".4"/>
+      <text x="${x}" y="${y + 6.2}">${p.name}</text>${last ? `<text x="${x}" y="${y + 8.8}" style="font-size:1.9px">HR ${last.hr}</text>` : ''}</g>`;
+  }).join('');
+  document.querySelectorAll('.pl').forEach(g => g.onclick = () => { $('cmd').value = `take off ${g.dataset.name}, bring on `; $('cmd').focus(); });
+  $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${p.position} ${p.rating}</small></span>`).join('');
+  document.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === state.mentality));
+}
+
+function suggest(alerts) {
+  const a = alerts.find(x => state.xi.some(p => p.name === x.off));
+  pending = a || null;
+  $('sugpanel').classList.toggle('sug', !!a);
+  $('sug').innerHTML = a ? `<b>${a.off} off, ${a.on} on</b> <small>(confidence ${Math.round(a.probability * 100)}%)</small><br><small>${a.evidence}</small>
+    <div class="row" style="margin-top:8px"><button class="primary" id="accept">Accept</button><button id="dismiss">Keep him on</button></div>`
+    : 'None right now. The AI watches every player against their own baseline.';
+  if (a) {
+    $('accept').onclick = () => send({off: a.off, on: a.on});
+    $('dismiss').onclick = () => { suggest([]); say(`You kept ${a.off} on.`); };
+  }
+}
+
+async function send(body) {
+  try {
+    const r = await post('/decision', body);
+    state = r;
+    if (r.applied) { log(`${state.minute}' ${r.applied.source === 'coach' ? 'Coach' : 'AI suggestion accepted'}: ${r.applied.off} off, ${r.applied.on} on`); say(''); suggest([]); }
+    else if (body.transcript && !/attack|defen|balanced/i.test(body.transcript)) say("Didn't catch a substitution. Try: take off <name>, bring on <name>.");
+    render();
+  } catch (e) { say(String(e)); }
+}
+
+async function step() {
+  if (state.minute >= 90) return stop();
+  try {
+    const r = await post('/tick');
+    state = r;
+    r.tick.snaps.forEach(s => (hist[s.player] = hist[s.player] || []).push(s));
+    r.tick.events.forEach(e => log(`${e.minute}' ${e.team}: ${e.detail.goal ? 'GOAL' : 'shot'} (${e.player}, xG ${e.detail.xg})`));
+    render(); suggest(r.alerts);
+    if (r.alerts.length) stop();  // pause so the coach decides
+  } catch (e) { stop(); }
+  if (state.minute >= 90) { stop(); log('Full time'); }
+}
+function stop() { clearInterval(timer); timer = null; $('play').textContent = 'Play'; }
+$('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 1200); $('play').textContent = 'Pause'; };
+$('step').onclick = step;
+$('cmdform').onsubmit = e => { e.preventDefault(); const t = $('cmd').value.trim(); if (t) { send({transcript: t}); $('cmd').value = ''; } };
+document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => send({mentality: b.dataset.m}));
+
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SR) $('mic').style.display = 'none';
+else $('mic').onclick = () => { const r = new SR(); r.lang = 'en-GB'; r.onresult = e => { $('cmd').value = e.results[0][0].transcript; $('cmdform').requestSubmit(); }; r.start(); say('Listening...'); };
+
+fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; render(); });
+</script>
+</body>
+</html>
