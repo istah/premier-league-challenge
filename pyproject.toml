@@ -8,10 +8,12 @@ dependencies = [
     "agent-framework-orchestrations",
     "azure-identity",
     "python-dotenv",
+    "fastapi",
+    "uvicorn",
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = ["pytest", "httpx"]
 
 [build-system]
 requires = ["hatchling"]

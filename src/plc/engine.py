@@ -6,8 +6,10 @@ import random
 from dataclasses import dataclass, field
 
 from .events import Event
-from .squad import CLUB, Player
+from .readiness import match_day_hrv, pick_xi
+from .squad import CLUB, Player, make_squad
 from .tracking import Snapshot
+from .training import run_training
 
 MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)}  # (our chances, their chances)
 
@@ -79,3 +81,18 @@ class Match:
     @property
     def finished(self) -> bool:
         return self.minute >= 90
+
+
+def new_match(seed: int = 7) -> tuple["Match", list[Player]]:
+    """The demo scenario: the AI rests the tired star, the coach starts him anyway, and he fades after ~55'."""
+    squad = make_squad(seed)
+    run_training(squad, seed=seed)
+    tired = max((p for p in squad if p.position == "MID"), key=lambda p: p.rating).name
+    hrv = match_day_hrv(squad, seed, tired)
+    xi, bench = pick_xi(squad, hrv)
+    if tired not in [p.name for p in xi]:
+        t = next(p for p in squad if p.name == tired)
+        weak = min((p for p in xi if p.position == "MID"), key=lambda p: p.rating)
+        xi[xi.index(weak)] = t
+        bench[:] = [b for b in bench if b.name != tired] + [weak]
+    return Match(xi, bench, hrv, seed=seed), squad

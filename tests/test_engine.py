@@ -1,22 +1,10 @@
-from plc.engine import Match
+from plc.engine import new_match
 from plc.live import live_alerts
-from plc.readiness import match_day_hrv, pick_xi
-from plc.squad import make_squad
-from plc.training import run_training
 
 
 def _match(seed=7):
-    squad = make_squad(seed)
-    run_training(squad, seed=seed)
-    tired = max((p for p in squad if p.position == "MID"), key=lambda p: p.rating).name
-    hrv = match_day_hrv(squad, seed, tired)
-    xi, bench = pick_xi(squad, hrv)
-    if tired not in [p.name for p in xi]:  # coach starts him against the AI's advice
-        t = next(p for p in squad if p.name == tired)
-        weak = min((p for p in xi if p.position == "MID"), key=lambda p: p.rating)
-        xi[xi.index(weak)] = t
-        bench[:] = [b for b in bench if b.name != tired] + [weak]
-    return Match(xi, bench, hrv, seed=seed), tired
+    m, _ = new_match(seed)
+    return m, max((p for p in m.xi if p.position == "MID"), key=lambda p: p.rating).name
 
 
 def _to(minute, m):
