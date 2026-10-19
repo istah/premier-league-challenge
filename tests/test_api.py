@@ -23,3 +23,12 @@ def test_play_and_coach_override():
 
 def test_index_served():
     assert "Coach Room" in c.get("/").text
+
+
+def test_formation_by_dictation_and_button():
+    s = c.post("/match").json()
+    mid = s["id"]
+    out = c.post(f"/match/{mid}/decision", json={"transcript": "switch to four four two"}).json()
+    assert out["formation"] == "4-4-2" and sorted(out["lines"].values()).count("MID") == 4
+    out = c.post(f"/match/{mid}/decision", json={"formation": "3-4-3"}).json()
+    assert list(out["lines"].values()).count("FWD") == 3

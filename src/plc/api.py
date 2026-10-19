@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from .coach import Decision, decide
-from .engine import Match, new_match
+from .engine import FORMATIONS, Match, new_match
 from .live import live_alerts
 from .squad import Player
 
@@ -19,15 +19,19 @@ INDEX = Path(__file__).parent / "static" / "index.html"
 SESSIONS: dict[str, tuple[Match, list[Player]]] = {}
 
 
+NUMBERS = {"three": "3", "four": "4", "five": "5", "two": "2", "one": "1"}  # dictation spells digits out
+
+
 class Command(BaseModel):
     transcript: str | None = None  # typed or dictated, e.g. "take off Vance, bring on Haas, go attacking"
     off: str | None = None
     on: str | None = None
     mentality: str | None = None
+    formation: str | None = None
 
 
 def _state(m: Match) -> dict:
-    return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "xi": [asdict(p) for p in m.xi],
+    return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": list(FORMATIONS), "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 
 
@@ -78,4 +82,9 @@ def decision(mid: str, cmd: Command):
     mentality = cmd.mentality or next((k for k, w in (("attack", "attack"), ("attack", "attacking"), ("defend", "defend"), ("defend", "defensive"), ("balanced", "balanced")) if w in words), None)
     if mentality:
         m.set_mentality(mentality)
+    spoken = " ".join(NUMBERS.get(w, w) for w in words)
+    found = re.search(r"\b(\d) ?(\d) ?(\d)\b", spoken)
+    formation = cmd.formation or (f"{found[1]}-{found[2]}-{found[3]}" if found else None)
+    if formation:
+        m.set_formation(formation)
     return {"applied": asdict(d) if d else None, **_state(m)}

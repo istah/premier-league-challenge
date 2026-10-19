@@ -32,3 +32,10 @@ def test_substitution_restores_strength():
     swap.substitute(tired, on)
     assert swap.strength() > stay.strength()
     assert tired not in [p.name for p in swap.xi] and on in [p.name for p in swap.xi]
+
+
+def test_formation_trades_attack_for_defence_and_costs_out_of_position():
+    m, _ = _match()
+    base = m.strength()
+    m.set_formation("3-4-3")
+    assert list(m.line.values()).count("FWD") == 3 and m.strength() < base  # a defender now plays midfield

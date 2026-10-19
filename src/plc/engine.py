@@ -11,6 +11,9 @@ from .squad import CLUB, Player, make_squad
 from .tracking import Snapshot
 from .training import run_training
 
+FORMATIONS = {"4-3-3": (4, 3, 3), "4-4-2": (4, 4, 2), "3-5-2": (3, 5, 2), "3-4-3": (3, 4, 3), "5-3-2": (5, 3, 2)}  # DEF, MID, FWD
+ORDER = {"DEF": 0, "MID": 1, "FWD": 2}
+OUT_OF_POSITION = 0.93  # strength multiplier for a player used outside their natural line
 MENTALITY = {"defend": (0.7, 0.75), "balanced": (1.0, 1.0), "attack": (1.3, 1.2)}  # (our chances, their chances)
 
 
@@ -33,12 +36,14 @@ class Match:
     minute: int = 0
     score: list[int] = field(default_factory=lambda: [0, 0])
     mentality: str = "balanced"
+    formation: str = "4-3-3"
     snaps: list[Snapshot] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
 
     def __post_init__(self):
         self.rng = random.Random(self.seed)
         self.entered = {p.name: 0 for p in self.xi}
+        self.line = {p.name: p.position for p in self.xi}
 
     def fade(self, p: Player) -> float:
         r = self.hrv.get(p.name, 1.0)
@@ -46,12 +51,22 @@ class Match:
         return max(0, played - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
 
     def strength(self) -> float:
-        return sum(p.rating * (1 - self.fade(p)) for p in self.xi) / len(self.xi)
+        return sum(p.rating * (1 - self.fade(p)) * (1 if self.line[p.name] == p.position else OUT_OF_POSITION) for p in self.xi) / len(self.xi)
 
     def substitute(self, off: str, on: str) -> None:
         out, inn = next(p for p in self.xi if p.name == off), next(p for p in self.bench if p.name == on)
         self.xi[self.xi.index(out)], self.bench[self.bench.index(inn)] = inn, out
         self.entered[inn.name] = self.minute
+        self.line[inn.name] = self.line.pop(out.name)
+
+    def set_formation(self, formation: str) -> None:
+        """Re-deals the outfield into the new lines, keeping players in their natural order, so some may end up out of position."""
+        if formation not in FORMATIONS:
+            return
+        outfield = sorted((p for p in self.xi if self.line[p.name] != "GK"), key=lambda p: ORDER[p.position])
+        lines = [line for line, n in zip(("DEF", "MID", "FWD"), FORMATIONS[formation]) for _ in range(n)]
+        self.line.update({p.name: line for p, line in zip(outfield, lines)})
+        self.formation = formation
 
     def set_mentality(self, mentality: str) -> None:
         if mentality in MENTALITY:
@@ -65,6 +80,8 @@ class Match:
             snaps.append(Snapshot(self.minute, p.name, round(self.rng.gauss(560, 40) * (1 - f)), max(0, round(self.rng.gauss(2, 1) * (1 - f))),
                                   round(self.rng.gauss(165, 6) + f * 12), self.hrv.get(p.name, 1.0)))
         mine, theirs = MENTALITY[self.mentality]
+        _, _, fwd = FORMATIONS[self.formation]
+        mine, theirs = mine * (1 + 0.1 * (fwd - 3)), theirs * (1 - 0.08 * (FORMATIONS[self.formation][0] - 4))
         events = []
         for side, chance in ((0, 0.35 * self.strength() / 70 * mine), (1, 0.35 * self.opp_strength / 70 * theirs)):
             if self.rng.random() < chance:
