@@ -39,3 +39,12 @@ def test_formation_trades_attack_for_defence_and_costs_out_of_position():
     base = m.strength()
     m.set_formation("3-4-3")
     assert list(m.line.values()).count("FWD") == 3 and m.strength() < base  # a defender now plays midfield
+
+
+def test_frames_place_22_players_and_ball_in_bounds_and_high_block_sits_high():
+    m, _ = _match()
+    t = m.tick()
+    assert len(t.frames) == 5 and all(len(f) == 23 for f in t.frames)
+    assert all(0 <= v <= 100 for f in t.frames for xy in f.values() for v in xy)
+    opp_defenders = [t.frames[0][f"{m.opponent} #{i}"][0] for i in range(2, 6)]
+    assert max(opp_defenders) < 60  # a pressing side defends near the halfway line, not on its own box

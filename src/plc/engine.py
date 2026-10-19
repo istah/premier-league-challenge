@@ -9,7 +9,7 @@ from .events import Event
 from .fixtures import make_opponent
 from .readiness import match_day_hrv, pick_xi
 from .squad import CLUB, Player, make_squad
-from .tactics import FORMATIONS, assess
+from .tactics import FORMATIONS, assess, their_formation
 from .tracking import Snapshot
 from .training import run_training
 
@@ -37,6 +37,7 @@ class Tick:
     events: list[Event]
     score: tuple[int, int]
     shapes: dict[str, Shape] = field(default_factory=dict)  # keyed "us" / "them"
+    frames: list[dict] = field(default_factory=list)  # 5 one-minute frames: name -> [x, y] on a 0-100 pitch, plus "ball"
 
 
 @dataclass
@@ -111,7 +112,7 @@ class Match:
         self.events += events
         shapes = self._shapes()
         self.shapes.append(shapes)
-        return Tick(self.minute, snaps, events, (self.score[0], self.score[1]), shapes)
+        return Tick(self.minute, snaps, events, (self.score[0], self.score[1]), shapes, self._frames(shapes))
 
     def _shapes(self) -> dict[str, Shape]:
         g, d, m, f = self.rng.gauss, *FORMATIONS[self.formation]
@@ -127,6 +128,36 @@ class Match:
         them = Shape(round(100 - us_pos, 1), round(line, 1), round(fwd, 1), round(30 + g(0, 2), 1), round(max(5, 70 - fwd + g(0, 1)), 1),
                      round(55 - 20 * o.press + g(0, 2), 1), round(14 - 10 * o.press + (4 if lead else 0) + g(0, 1), 1))
         return {"us": us, "them": them}
+
+    def _frames(self, shapes: dict[str, Shape]) -> list[dict]:
+        """Player positions for each minute of the tick: anchored to formation and block height, pulled towards the ball."""
+        us, them = shapes["us"], shapes["them"]
+        anchors = {}
+
+        def place(names_by_line: dict[str, list[str]], height: float, mirror: bool):
+            for line, names in names_by_line.items():
+                x = {"GK": 5, "DEF": height, "MID": height + 18, "FWD": min(92, height + 36)}[line]
+                for i, name in enumerate(names):
+                    anchors[name] = (100 - x if mirror else x, (i + 1) / (len(names) + 1) * 100)
+
+        ours: dict[str, list[str]] = {}
+        for p in self.xi:
+            ours.setdefault(self.line[p.name], []).append(p.name)
+        place(ours, us.def_line, False)
+        d, m, f = FORMATIONS[their_formation(self.profile)]
+        n = iter(f"{self.opponent} #{i}" for i in range(1, 12))
+        place({line: [next(n) for _ in range(c)] for line, c in (("GK", 1), ("DEF", d), ("MID", m), ("FWD", f))}, them.def_line, True)
+
+        clamp = lambda v, lo, hi: max(lo, min(hi, v))
+        ball, frames = [50 + (us.possession - 50) * 0.8, 50.0], []
+        for _ in range(5):
+            ball = [clamp(ball[0] + self.rng.gauss(0, 6), 3, 97), clamp(ball[1] + self.rng.gauss(0, 10), 5, 95)]
+            frame = {"ball": [round(ball[0], 1), round(ball[1], 1)]}
+            for name, (x, y) in anchors.items():
+                pull = 0.05 if x < 8 or x > 92 else 0.18
+                frame[name] = [round(clamp(x + (ball[0] - 50) * pull + self.rng.gauss(0, 1.5), 2, 98), 1), round(clamp(y + (ball[1] - 50) * 0.12 + self.rng.gauss(0, 2), 3, 97), 1)]
+            frames.append(frame)
+        return frames
 
     @property
     def finished(self) -> bool:
