@@ -6,7 +6,7 @@ Rules are plain data so the same definitions can be created as Fabric Activator 
 from dataclasses import dataclass, field
 
 RULES = [
-    {"name": "player_fading", "field": "alerts", "op": "nonempty", "key": "alerts", "route": "fade"},
+    {"name": "player_fading", "field": "alerts", "op": "nonempty", "key": "fading", "route": "fade"},
     {"name": "opponent_changed_shape", "field": "their_shifts", "op": "nonempty", "key": "their_shifts", "route": "opponent"},
     {"name": "goal", "field": "goals", "op": "gt", "value": 0, "key": "minute", "route": "goal"},
     {"name": "readiness_concern", "field": "concerns", "op": "nonempty", "key": "concerns", "route": "readiness"},

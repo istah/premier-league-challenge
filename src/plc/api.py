@@ -106,7 +106,7 @@ def tick(mid: str):
     for e in t.events:
         bus.publish("shot", mid, asdict(e))
     facts = gold_facts(m)
-    state = {"minute": t.minute, "alerts": alerts, "goals": sum(e.detail.get("goal", False) for e in t.events), "their_shifts": facts.get("their_shifts", []),
+    state = {"minute": t.minute, "alerts": alerts, "fading": sorted(a["off"] for a in alerts), "goals": sum(e.detail.get("goal", False) for e in t.events), "their_shifts": facts.get("their_shifts", []),
              "concerns": _state(m)["concerns"] if t.minute == 5 else [], "shape_issues": [(i["kind"], i.get("player")) for i in facts.get("shape_issues", [])], "score": t.score,
              "late_deficit": max(0, t.score[1] - t.score[0]) if t.minute >= 70 else 0, "late_lead": max(0, t.score[0] - t.score[1]) if t.minute >= 70 else 0}
     triggers = ACTIVATORS[mid].evaluate(state)

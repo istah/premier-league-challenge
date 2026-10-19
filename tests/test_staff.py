@@ -58,10 +58,10 @@ def test_judge_catches_invented_numbers_and_styles():
 
 def test_activator_fires_on_change_not_on_every_event():
     a = Activator()
-    p = {"minute": 55, "alerts": [{"off": "X"}], "goals": 0, "their_shifts": [], "concerns": [], "score": (0, 0), "late_deficit": 0, "late_lead": 0}
+    p = {"minute": 55, "alerts": [{"off": "X"}], "fading": ["X"], "goals": 0, "their_shifts": [], "concerns": [], "score": (0, 0), "late_deficit": 0, "late_lead": 0}
     assert [r["route"] for r in a.evaluate(p)] == ["fade"]
     assert a.evaluate(p) == []  # same state, no re-fire
-    assert [r["route"] for r in a.evaluate({**p, "alerts": [{"off": "Y"}]})] == ["fade"]
+    assert [r["route"] for r in a.evaluate({**p, "alerts": [{"off": "Y"}], "fading": ["Y"]})] == ["fade"]
 
 
 def test_benchmark_judge_catches_every_corruption_and_flags_no_real_note(tmp_path):
