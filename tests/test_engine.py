@@ -108,3 +108,16 @@ def test_wings_plan_overlaps_fullbacks_and_box_slider_fills_the_box():
     wings, inside = stats("wings"), stats("inside")
     assert wings[0] > inside[0] == 0  # only the wide plan produces overlapping runs
     assert wings[1] >= inside[1]
+
+
+def test_individual_orders_move_the_player_and_change_the_overload_count():
+    from plc.coach import parse_orders
+    m, _ = _match()
+    name = next(p.name for p in m.xi if p.position == "FWD")
+    assert parse_orders(f"{name} drop wider", m.xi) == {name: {"depth": -12, "width": 12}}
+    plain, ordered = _to(10, _match()[0]), _match()[0]
+    ordered.set_order(name, depth=-25)
+    _to(10, ordered)
+    assert ordered.last_frame[name][0] < plain.last_frame[name][0] and "coach order" in ordered.tick().roles[name]
+    ordered.set_order(name, depth=0, width=0)
+    assert name not in ordered.orders

@@ -68,6 +68,8 @@ class Match:
     snaps: list[Snapshot] = field(default_factory=list)
     events: list[Event] = field(default_factory=list)
     shapes: list[dict[str, Shape]] = field(default_factory=list)
+    orders: dict = field(default_factory=dict)  # coach's individual instructions: name -> {depth, width}, in pitch % (+ higher / wider)
+    last_frame: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.rng = random.Random(self.seed)
@@ -110,6 +112,22 @@ class Match:
         if mentality in PRESETS:
             self.mentality, self.instructions = mentality, dict(PRESETS[mentality])
 
+    def set_order(self, name: str, depth: int | None = None, width: int | None = None) -> None:
+        if not any(p.name == name for p in self.xi):
+            return
+        o = self.orders.get(name, {"depth": 0, "width": 0})
+        o = {"depth": max(-30, min(30, o["depth"] if depth is None else depth)), "width": max(-30, min(30, o["width"] if width is None else width))}
+        if o == {"depth": 0, "width": 0}:
+            self.orders.pop(name, None)
+        else:
+            self.orders[name] = o
+
+    def overloads(self) -> dict[str, tuple[int, int]]:
+        """(ours, theirs) player counts in the central zone and each wide channel, from the last minute of the previous tick."""
+        f = self.last_frame
+        zones = {"central": lambda x, y: 35 <= x <= 65 and 25 <= y <= 75, "top": lambda x, y: 20 <= x <= 80 and y < 30, "bottom": lambda x, y: 20 <= x <= 80 and y > 70}
+        return {z: (sum(inz(*f[p.name]) for p in self.xi if p.name in f), sum(inz(*v) for n, v in f.items() if n.startswith(self.opponent))) for z, inz in zones.items()}
+
     def set_instructions(self, **sliders: int) -> None:
         for k, v in sliders.items():
             if k in self.instructions:
@@ -128,6 +146,9 @@ class Match:
         counter = max(0, (i["direct"] - 50) / 50) * max(0, (50 - shapes["us"].possession) / 50) * 0.8  # direct sides profit when they cede the ball
         mine = (1 + counter) * (1 + 0.002 * (i["cross"] - 50)) * (1 + 0.004 * (i["press"] - 50) + 0.003 * (i["tempo"] - 50) + 0.002 * (i["line"] - 50))
         theirs = 1 + 0.004 * (i["line"] - 50) - 0.003 * (i["press"] - 50)  # a high line is exposed; a hard press disrupts them
+        ov = self.overloads()
+        outnumbered = max(0, ov["central"][1] - ov["central"][0]) + sum(max(0, ov[z][1] - ov[z][0]) for z in ("top", "bottom")) * 0.5
+        mine, theirs = mine * (1 - 0.02 * outnumbered), theirs * (1 + 0.03 * outnumbered)  # being outnumbered costs chances; orders move players, which changes the count
         fit = assess(self.formation, self.profile).fit
         mine, theirs = mine * (1 + fit), theirs * (1 - fit / 2)
         events = []
@@ -200,6 +221,11 @@ class Match:
             for name, (x, y) in anchors.items():
                 pull = 0.05 if x < 8 or x > 92 else 0.18
                 frame[name] = [x + (ball[0] - 50) * pull + self.rng.gauss(0, 1.5), y + (ball[1] - 50) * 0.12 + self.rng.gauss(0, 2)]
+            for name, o in self.orders.items():
+                if name in frame:
+                    frame[name][0] += o["depth"]
+                    frame[name][1] += (1 if frame[name][1] >= 50 else -1) * o["width"]
+                    roles[name] = "coach order: " + ", ".join(t for t in ((f"{'higher' if o['depth'] > 0 else 'deeper'}" if o["depth"] else ""), (f"{'wider' if o['width'] > 0 else 'narrower'}" if o["width"] else "")) if t)
             if attacking:
                 for name in fullbacks:
                     dx = 10 + 18 * wing
@@ -231,6 +257,7 @@ class Match:
                     frame[name][0] = max(frame[name][0], 55)
                     roles[name] = "stays high, waits to counter"
             frames.append({k: [round(clamp(v[0], 2, 98), 1), round(clamp(v[1], 3, 97), 1)] for k, v in frame.items()})
+        self.last_frame = frames[-1]
         return frames, roles
 
     @property

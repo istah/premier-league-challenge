@@ -1,5 +1,8 @@
+from plc import orchestrator
+from plc.activator import Activator
 from plc.engine import new_match
-from plc.staff import briefing, gold_facts
+from plc.judge import judge
+from plc.staff import gold_facts
 
 
 def _played(minute):
@@ -24,7 +27,45 @@ def test_style_shift_detected_when_opponent_leads_late():
     assert gold_facts(m)["their_shifts"] == ["moved from a high block to a mid block"]
 
 
-def test_offline_briefing_cites_sources_and_waits_for_data():
-    assert briefing(_played(0))["notes"] == []
-    notes = briefing(_played(30))["notes"]
-    assert notes and all(n["source"] for n in notes) and any(n["agent"] == "Formation Tactician" for n in notes)
+def test_orchestrator_waits_for_data_then_routes_by_trigger():
+    assert orchestrator.run(_played(0))["notes"] == []
+    m = _played(70)
+    fade = orchestrator.run(m, "fade")
+    assert fade["agents"] == ["Formation Tactician", "Own-Style Analyst"]
+    assert any(a["type"] == "sub" for n in fade["notes"] for a in n.get("actions", [])) and fade["judge"]["grounded"]
+    assert {n["agent"] for n in orchestrator.run(m, "opponent")["notes"]} <= {"Opponent Analyst", "Formation Tactician"}
+    m.score[:] = [0, 1]
+    assert "Behind 0-1" in orchestrator.run(m, "losing")["notes"][0]["claim"]
+
+
+def test_every_offline_note_is_grounded_and_cites_sources_for_every_route():
+    m = _played(70)
+    for route in orchestrator.ROUTES:
+        out = orchestrator.run(m, route)
+        assert out["judge"]["grounded"], (route, out["judge"]["unsupported"])
+        assert all(n["source"] for n in out["notes"])
+
+
+def test_judge_catches_invented_numbers_and_styles():
+    m = _played(40)
+    f = gold_facts(m)
+    good = {"agent": "Opponent Analyst", "claim": f"{f['opponent']} play a {f['their_formation']}.", "source": "x"}
+    fake_num = {"agent": "Opponent Analyst", "claim": "Their press wins the ball 17 times per half.", "source": "x"}
+    fake_style = {"agent": "Opponent Analyst", "claim": "They sit in a low block and wing play.", "source": "x"}
+    assert judge([good], f)["grounded"]
+    assert not judge([fake_num], f)["grounded"] and not judge([fake_style], f)["grounded"]
+
+
+def test_activator_fires_on_change_not_on_every_event():
+    a = Activator()
+    p = {"minute": 55, "alerts": [{"off": "X"}], "goals": 0, "their_shifts": [], "concerns": [], "score": (0, 0), "late_deficit": 0, "late_lead": 0}
+    assert [r["route"] for r in a.evaluate(p)] == ["fade"]
+    assert a.evaluate(p) == []  # same state, no re-fire
+    assert [r["route"] for r in a.evaluate({**p, "alerts": [{"off": "Y"}]})] == ["fade"]
+
+
+def test_benchmark_judge_catches_every_corruption_and_flags_no_real_note(tmp_path):
+    from plc.bench import run
+    r = run(seeds=(7,), plans=("balanced", "counter"), out=tmp_path)
+    assert r["judge_catch_rate"] == 1.0 and r["judge_false_positive_rate"] == 0.0 and r["grounded_rate"] == 1.0
+    assert (tmp_path / "eval.jsonl").read_text().strip()

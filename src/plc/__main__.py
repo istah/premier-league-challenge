@@ -16,6 +16,10 @@ if cmd == "dataset":  # uv run python -m plc dataset [seed]
     from .dataset import build
 
     print(build(Path("data/bronze"), int(sys.argv[2]) if len(sys.argv) > 2 else 0))
+elif cmd == "bench":  # uv run python -m plc bench
+    from .bench import run
+
+    print(json.dumps(run(), indent=2))
 elif cmd == "demo":  # uv run python -m plc demo ["dictated coach command"]
     demo.run(dictation=sys.argv[2] if len(sys.argv) > 2 else None)
 else:  # uv run python -m plc explain [fan|analyst]: needs Foundry env vars

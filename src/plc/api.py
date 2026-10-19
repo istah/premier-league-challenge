@@ -9,19 +9,22 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from .coach import Decision, decide
+from .coach import Decision, decide, parse_orders
 from .engine import PRESETS, Match, new_match
 from .explain import explain
 from .tactics import FORMATIONS, assess, recommend, their_formation
 from .live import live_alerts
 from .profiles import LINES, archetype, attributes, fit, needs
 from .readiness import concerns, hooper, wellness_ratio
-from .staff import briefing
+from . import bus, orchestrator
+from .activator import Activator
+from .staff import gold_facts
 from .squad import Player
 
 app = FastAPI(title="Redmoor FC Coach Room")
 INDEX = Path(__file__).parent / "static" / "index.html"
 SESSIONS: dict[str, tuple[Match, list[Player]]] = {}
+ACTIVATORS: dict[str, Activator] = {}
 
 
 KEYS = {"press": {"press", "pressing"}, "line": {"line", "deeper"}, "width": {"width", "wider", "narrower"}, "tempo": {"tempo", "faster", "slower"}}
@@ -36,6 +39,7 @@ class Command(BaseModel):
     on: str | None = None
     mentality: str | None = None
     formation: str | None = None
+    orders: dict[str, dict[str, int]] | None = None  # per-player: {depth, width}
     instructions: dict[str, int] | None = None  # press / line / width / tempo, 0-100
 
 
@@ -60,7 +64,7 @@ def _fit(m: Match) -> dict:
 
 def _state(m: Match) -> dict:
     return {"minute": m.minute, "score": m.score, "mentality": m.mentality, "formation": m.formation, "formations": {f: assess(f, m.profile).verdict for f in FORMATIONS}, "recommended": recommend(m.profile),
-            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "explain": explain(m.instructions), "their_formation": their_formation(m.profile), "playerfit": _fit(m), "instructions": m.instructions, "presets": list(PRESETS),
+            "tactics": asdict(assess(m.formation, m.profile)), "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()], "moves": m.moves(), "orders": m.orders, "explain": explain(m.instructions), "their_formation": their_formation(m.profile), "playerfit": _fit(m), "instructions": m.instructions, "presets": list(PRESETS),
             "wellness": {n: {"hooper": hooper(w), "ratio": wellness_ratio(w)} for n, w in m.wellness.items()}, "concerns": concerns(m.xi, m.hrv, m.wellness), "lines": m.line, "xi": [asdict(p) for p in m.xi],
             "bench": [asdict(p) for p in m.bench], "hrv": m.hrv}
 
@@ -80,6 +84,7 @@ def index():
 def start(seed: int = 7, formation: str | None = None):
     mid = uuid.uuid4().hex[:8]
     SESSIONS[mid] = new_match(seed)
+    ACTIVATORS[mid] = Activator()
     if formation:
         SESSIONS[mid][0].set_formation(formation)  # the coach's starting shape
     return {"id": mid, **_state(SESSIONS[mid][0])}
@@ -97,7 +102,17 @@ def tick(mid: str):
         raise HTTPException(409, "full time")
     t = m.tick()
     alerts = [asdict(a) for a in live_alerts(t.minute, m.snaps, m.xi, m.bench, m.hrv)]  # suggestions only, never applied
-    return {"tick": asdict(t), "alerts": alerts, **_state(m)}
+    bus.publish("tick", mid, {"minute": t.minute, "score": t.score, "shapes": asdict(t)["shapes"]})
+    for e in t.events:
+        bus.publish("shot", mid, asdict(e))
+    facts = gold_facts(m)
+    state = {"minute": t.minute, "alerts": alerts, "goals": sum(e.detail.get("goal", False) for e in t.events), "their_shifts": facts.get("their_shifts", []),
+             "concerns": _state(m)["concerns"] if t.minute == 5 else [], "shape_issues": [(i["kind"], i.get("player")) for i in facts.get("shape_issues", [])], "score": t.score,
+             "late_deficit": max(0, t.score[1] - t.score[0]) if t.minute >= 70 else 0, "late_lead": max(0, t.score[0] - t.score[1]) if t.minute >= 70 else 0}
+    triggers = ACTIVATORS[mid].evaluate(state)
+    for tr in triggers:
+        bus.publish("trigger", mid, tr)
+    return {"tick": asdict(t), "alerts": alerts, "triggers": triggers, **_state(m)}
 
 
 @app.post("/match/{mid}/decision")
@@ -114,6 +129,8 @@ def decision(mid: str, cmd: Command):
     mentality = cmd.mentality or next((k for k, w in (("attack", "attack"), ("attack", "attacking"), ("defend", "defend"), ("defend", "defensive"), ("balanced", "balanced")) if w in words), None)
     if mentality:
         m.set_mentality(mentality)
+    for name, o in {**parse_orders(cmd.transcript or "", m.xi), **(cmd.orders or {})}.items():
+        m.set_order(name, o.get("depth"), o.get("width"))
     sliders = dict(cmd.instructions or {})
     for key, names in KEYS.items():  # "press higher", "sit deeper", "play faster"
         sign = (1 if UP & set(words) else -1 if DOWN & set(words) else 0) if names & set(words) else 0
@@ -130,5 +147,12 @@ def decision(mid: str, cmd: Command):
 
 
 @app.get("/match/{mid}/briefing")
-def staff_briefing(mid: str):
-    return briefing(_get(mid)[0])
+def staff_briefing(mid: str, route: str = "full"):
+    out = orchestrator.run(_get(mid)[0], route)
+    bus.publish("briefing", mid, {"route": route, "mode": out["mode"], "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
+    return out
+
+
+@app.get("/events")
+def events(limit: int = 50):
+    return list(bus.LOG)[-limit:]
