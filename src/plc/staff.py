@@ -20,8 +20,8 @@ from .tactics import assess, recommend, their_formation
 def shape_issues(m: Match, styles: list[dict]) -> list[dict]:
     """Spot where we are outnumbered or standing badly, and pick a player to adjust. Counts come from the engine's last frame."""
     out, ov = [], m.overloads()
-    ours = [p for p in m.xi if m.line[p.name] != "GK"]
     last = m.last_frame
+    ours = [p for p in m.xi if m.line[p.name] != "GK" and p.name in last]  # a fresh substitute has no frame until the next tick
     if not last:
         return out
     c_us, c_them = ov["central"]
@@ -37,7 +37,7 @@ def shape_issues(m: Match, styles: list[dict]) -> list[dict]:
             if who:
                 out.append({"kind": f"{zone}_channel_overload", "player": who.name, "us": z_us, "them": z_them, "action": {"type": "order", "player": who.name, "depth": -8, "width": 12, "label": f"{who.name}: drop wider"}})
     line = next((float(re.search(r"averages ([\d.]+)", s["evidence"])[1]) for s in styles if s["label"] in ("high block", "mid block", "low block")), None)
-    if line and line >= 45 and any(s["label"] == "direct play" for s in classify([h["them"] for h in m.shapes[-4:]])):
+    if line and line >= 45 and any(s.label == "direct play" for s in classify([h["them"] for h in m.shapes[-4:]])):
         out.append({"kind": "line_too_high", "line": line, "action": {"type": "sliders", "value": {"line": max(0, m.instructions["line"] - 20)}, "label": "Drop the back line"}})
     return out
 
@@ -96,7 +96,7 @@ def offline_briefing(f: dict, route: str = "full") -> list[dict]:
         add("Formation Tactician", ("Their line is high: change to a direct plan and play in behind. " if high else "Their block is deep: move the ball patiently. ") + read, "their_style, tactical_read",
             [plan("counter" if high else "possession")] + advice)
     elif route == "goal":
-        g = f["last_goal"]
+        g = f["last_goal"] or {"team": "", "minute": f["minute"]}
         mine = g and g["team"] != f["opponent"]
         add("Own-Style Analyst" if mine else "Opponent Analyst", (f"We scored at minute {g['minute']} (score {us}-{them}). Keep the plan that worked: {f['our_mentality']}." if mine
             else f"{opp} scored at minute {g['minute']} (score {us}-{them}). Do not chase yet: hold the shape and keep the press measured."), "last_goal, score",

@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from plc.api import app
 from plc.coach import Decision, decide
+from plc import orchestrator
 from plc.engine import new_match
 
 c = TestClient(app)
@@ -56,3 +57,13 @@ def test_nothing_changes_without_a_decision():
             break
     after = c.get(f"/match/{mid}").json()
     assert [p["name"] for p in after["xi"]] == xi0 and [p["name"] for p in after["bench"]] == bench0
+
+
+def test_staff_survives_substitution_and_early_goal_route():
+    m, _ = new_match(7)
+    for i in range(18):
+        m.tick()
+        if i == 9:
+            m.substitute(m.xi[5].name, m.bench[0].name)
+        for route in ("full", "goal", "shape"):
+            orchestrator.run(m, route)
