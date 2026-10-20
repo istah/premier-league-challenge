@@ -5,25 +5,36 @@ Owner: lead developer with Claude. Merge freeze **Oct 24**, submit **Oct 26** (d
 ## Owns
 `src/plc/` outside `experiments/`, `tests/` outside `test_exp_*`, `docs/PLAN_*`, `CLAUDE.md`, deploy config, pitch, video.
 
-| Due | Task | Needs |
+| Due | Task | Status |
 |---|---|---|
-| Oct 19 (am) | Register as team representative (before Oct 20, 12:00 pm PT); add teammate | Registration form |
-| Oct 19 | Create Foundry project; deploy a chat model and Microsoft-Decision-1; fill `.env` | Azure subscription |
-| Oct 19 | Match engine: tick-based, seeded, reacts to substitutions and formation changes | |
-| Oct 20 | CI: GitHub Actions runs `uv run pytest -q` on pull requests | |
-| Oct 21 | API streaming ticks; agents live on the stream: Coordinator, Tactician, Opponent Analyst, Fact-checker | Foundry |
-| Oct 21 | Verify the Decision-1 response field for probabilities against a real call | Foundry |
-| Oct 22 | One-page coach interface; dictation text box and mic button; deploy to Azure Container Apps | |
-| Oct 22 | Tests: a coach override beats any AI suggestion; no substitution is ever auto-applied | |
-| Oct 23 | Fact-checker cites the layer and query it used for every verification | |
-| Oct 23 | Wire merged experiments in as Tactician tools | experiment PRs |
-| Oct 24 | Freeze. Replay comparison: no changes vs AI accepted vs coach decisions | |
-| Oct 24 | Pre-public audit: secrets, personal emails in git history (rewrite if needed), real names or brands | |
-| Oct 25 | Pitch text, architecture diagram, demo script; pitch states real use of biometrics needs player consent; stretch: Fabric RTI only if everything above is done | |
-| Oct 26 | Make the repo public and submit by midday; then record and re-check the 2-minute video | |
+| Oct 19 | Register as team representative; add teammate | Done |
+| Oct 19 | Match engine, API, coach interface, staff agents, bus/Activator/orchestrator/judge/benchmark | Done (offline) |
+| Oct 20 | CI runs `uv run pytest -q` | Done |
+| Oct 22 | Tests: coach override beats AI; no substitution auto-applied | Done (`tests/test_override.py`) |
+| Oct 23 | Fact-checker cites layer and key per claim | Done (`judge.py`) |
+| Oct 24 | Replay comparison | Done (`python -m plc replay`) |
+| Oct 21 | Pitch text, diagram, demo script, Dockerfile | Drafted; Azure items in the pitch are marked not yet run |
+| Oct 22 | Azure checklist below (Foundry live run) | **Next** |
+| Oct 23 | Wire merged experiments in as Tactician tools; score Fact-checker on Askhat's eval set; judge vs human labels | Waiting on issues #1-#4 |
+| Oct 24 | Freeze. Pre-public audit: secrets, emails in history (done once; recheck), real names or brands, `reports/` and `research_notes/` decision | |
+| Oct 25 | Flip the TODO in `docs/PITCH.md` to what actually ran; re-check `docs/DEMO_SCRIPT.md`; record video | |
+| Oct 26 | Deploy to Azure Container Apps, make the repo public, submit by midday | |
+
+## Azure checklist (do in order, stop at the first failure and fix it)
+1. `az login` (subscription with Foundry access). Check `az account show`.
+2. Foundry portal: create a project; deploy a chat model; deploy Microsoft-Decision-1 if available.
+3. `cp .env.example .env` and fill `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL`, `FOUNDRY_RESOURCE_ENDPOINT`, `DECISION_DEPLOYMENT`. Never commit `.env`.
+4. `uv run python -m plc fan`: first live agent run. Fix import or API errors (`agent_briefing` in `staff.py` and `agents.py` were never run).
+5. Decision-1: call `decision.p_substitute` once; print the raw response and confirm where the per-option probability lives. Update `decision.py` and its comment.
+6. Live staff briefing: `GET /match/{id}/briefing` with the env set; confirm the Judge still passes the model's notes (`mode` shows live), and record the failure rate.
+7. LLM rubric judge (`judge.llm_score`): run on 10 notes; compare with the rules judge.
+8. Foundry evaluators on `data/bench/eval.jsonl` (Groundedness, Task Adherence, Intent Resolution, Tool Call Accuracy, Task Completion): check the dataset schema in the portal first, then run. Name preview evaluators as preview.
+9. Optional, only if 4 to 8 work: Event Hubs (`uv add azure-eventhub`, set `EVENTHUB_NAMESPACE` and `EVENTHUB_NAME`), then host agents in Foundry Agent Service, then Fabric Eventstream/Eventhouse/Activator.
+10. Update `docs/PITCH.md` and `README.md` tables with exactly what ran. Anything that failed stays under "designed, not yet run".
+11. Deploy: `docs/DEPLOY.md`.
 
 ## Contingency
-If the match engine slips past Oct 20, run the demo on the existing `generate_match` events and keep the streaming API on top of them.
+If the Foundry path fails by Oct 24, submit the offline system and label Foundry as designed, not run.
 
 ## Lead-only backlog
 Generator calibration: make `dataset.py` rates (xG, pass completion, fatigue curves) match public reference statistics. Cite the source and its licence; never commit raw third-party data. Not on the critical path; do it only after Oct 24 if time allows (it would change seed-0 data and tests).

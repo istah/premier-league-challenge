@@ -47,3 +47,6 @@ From `reports/Football AI tools replication.md` (sources there; some are dated o
 ## Fact-checker citations
 
 `judge.check` returns, per note, `citations`: each verified number or style label with `layer` ("gold"), `key` (e.g. `gold_facts['possession_pct']`) and the matched `value`. Claims it could not find are listed in `unsupported` and `searched`. `judge()` adds a flat `citations` list; existing fields are unchanged. `python -m plc bench` reports `citation_coverage` and, if `data/calibration/labels.csv` exists (`note_id,label,reason`, ids `<seed>-<plan>-<route>-<index>`), `human_agreement`. The LLM rubric judge is still unverified live.
+
+## Replay comparison
+`python -m plc replay [seeds]` plays the same seeded matches with no changes, with every AI staff action accepted, and with a scripted coach who overrides some of them. It prints paired differences with standard errors. The engine is synthetic and its effects are our own modelling choices, so this shows the pipeline behaves coherently, not that it wins real matches.
