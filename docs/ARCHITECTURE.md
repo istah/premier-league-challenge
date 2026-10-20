@@ -36,3 +36,10 @@ match engine ──► bus.publish() ──► Azure Event Hubs ──► Fabric
 
 ## Decision-1
 Fast bounded calls (substitute / keep / cannot_tell) stay in `decision.py`; the Judge and agents never call it.
+
+## What real clubs do, and what we claim
+
+From `reports/Football AI tools replication.md` (sources there; some are dated or vendor-reported):
+- Documented club use is pre-match dossiers, set-piece review and readiness flags, not live decisions. Our tick feed is more live than anything a club has: one source reports live tracking running about 7 minutes behind reprocessed data. The pitch says so, and presents the live view as a simulation of what a feed could support.
+- For substitution support we found only academic prototypes (a fuzzy-logic system and a UWA paper), none validated in live matches. The coach decides; nothing is auto-applied.
+- We do not build: a graph neural network on synthetic corners (it would only learn the generator's rules), EPV/OBV models, an injury classifier with an AUC claim (circular on synthetic data), or anything video-based. If asked, we say these are out of scope on purpose.

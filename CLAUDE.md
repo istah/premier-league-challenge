@@ -21,6 +21,7 @@ Fictional club (Redmoor FC), synthetic data only. Submission closes **Oct 27, 20
 
 ## Git
 - `main` stays runnable. Work on branches (`feat/...`, `exp/...`), merge via pull request with passing tests.
+- Commit with your GitHub noreply address only, never a personal or work email: `git config user.email <username>@users.noreply.github.com` (also enable "Block command line pushes that expose my email" in GitHub settings). Check before pushing: `git log --format='%ae %ce' | sort -u`. Names and Co-Authored-By trailers are fine.
 - Commit messages: imperative, one line, no trailing period.
 - End commits with: `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` when Claude wrote them.
 
