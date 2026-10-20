@@ -19,6 +19,26 @@ def _numbers(text: str) -> set[str]:
     return {n.rstrip("0").rstrip(".") if "." in n else n for n in re.findall(r"\d+(?:\.\d+)?", text)}
 
 
+def _leaves(node, path="gold_facts"):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield from _leaves(v, f"{path}[{k!r}]")
+    elif isinstance(node, list):
+        for i, v in enumerate(node):
+            yield from _leaves(v, f"{path}[{i}]")
+    elif node is not None:
+        yield path, node
+
+
+def _cite(leaves: list, what: str, kind: str) -> dict | None:
+    """First gold fact leaf holding the claim; for numbers a leaf that is exactly that number beats a sentence containing it."""
+    hits = [(p, v) for p, v in leaves if (what in _numbers(str(v)) if kind == "number" else what in str(v).lower())
+            and not (kind == "number" and isinstance(v, bool))]
+    exact = [h for h in hits if kind == "number" and isinstance(h[1], (int, float)) and _numbers(str(h[1])) == {what}]
+    hit = (exact or hits or [None])[0]
+    return {"claim": what, "kind": kind, "layer": "gold", "key": hit[0], "value": hit[1]} if hit else None
+
+
 def check(note: dict, facts: dict) -> dict:
     blob = json.dumps(facts)
     claim = note["claim"]
@@ -26,8 +46,13 @@ def check(note: dict, facts: dict) -> dict:
     bad_labels = [label for label in LABELS if label in claim.lower() and label not in blob.lower()]
     decides = note["agent"] != "Formation Tactician" or bool(re.search(r"\b(switch|keep|change|move)\b", claim.lower()))
     unsupported = [f"number {n} is not in the facts" for n in bad_numbers] + [f"style '{label}' is not in the facts" for label in bad_labels]
+    leaves = list(_leaves(facts))
+    wanted = [(n, "number") for n in sorted(_numbers(claim))] + [(label, "style") for label in LABELS if label in claim.lower()]
+    citations = [c for w, k in wanted if (c := _cite(leaves, w, k))]
+    searched = [f"{k} {w} in gold_facts" for w, k in wanted if not any(c["claim"] == w and c["kind"] == k for c in citations)]
     score = round(max(0.0, 1 - 0.34 * len(unsupported)) * (1 if decides else 0.7), 2)
-    return {"agent": note["agent"], "claim": claim, "score": score, "unsupported": unsupported, "decides": decides}
+    return {"agent": note["agent"], "claim": claim, "score": score, "unsupported": unsupported, "decides": decides,
+            "citations": citations, "numeric_claims": sum(k == "number" for _, k in wanted), "searched": searched}
 
 
 def llm_score(notes: list[dict], facts: dict, passes: int = 3) -> float | None:
@@ -63,4 +88,5 @@ def judge(notes: list[dict], facts: dict) -> dict:
     quality = llm_score(notes, facts) if rows else None
     return {"grounded": all(not r["unsupported"] for r in rows), "score": round(sum(r["score"] for r in rows) / len(rows), 2) if rows else None,
             "unsupported": [f"{r['agent']}: {u}" for r in rows for u in r["unsupported"]], "notes": rows,
+            "citations": [{"agent": r["agent"], **c} for r in rows for c in r["citations"]],
             "mode": "rules" if quality is None else "rules+llm", "llm_quality": quality}

@@ -43,3 +43,7 @@ From `reports/Football AI tools replication.md` (sources there; some are dated o
 - Documented club use is pre-match dossiers, set-piece review and readiness flags, not live decisions. Our tick feed is more live than anything a club has: one source reports live tracking running about 7 minutes behind reprocessed data. The pitch says so, and presents the live view as a simulation of what a feed could support.
 - For substitution support we found only academic prototypes (a fuzzy-logic system and a UWA paper), none validated in live matches. The coach decides; nothing is auto-applied.
 - We do not build: a graph neural network on synthetic corners (it would only learn the generator's rules), EPV/OBV models, an injury classifier with an AUC claim (circular on synthetic data), or anything video-based. If asked, we say these are out of scope on purpose.
+
+## Fact-checker citations
+
+`judge.check` returns, per note, `citations`: each verified number or style label with `layer` ("gold"), `key` (e.g. `gold_facts['possession_pct']`) and the matched `value`. Claims it could not find are listed in `unsupported` and `searched`. `judge()` adds a flat `citations` list; existing fields are unchanged. `python -m plc bench` reports `citation_coverage` and, if `data/calibration/labels.csv` exists (`note_id,label,reason`, ids `<seed>-<plan>-<route>-<index>`), `human_agreement`. The LLM rubric judge is still unverified live.
