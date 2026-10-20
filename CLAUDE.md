@@ -1,12 +1,13 @@
 # Premier League Challenge: project rules
 
-Solo-led entry for the Microsoft Inside the Game hackathon, category **Best Multi-Agent System**.
+Team entry for the Microsoft Inside the Game hackathon, category **Best Multi-Agent System**.
 Fictional club (Redmoor FC), synthetic data only. Submission closes **Oct 27, 2026 11:59 pm PT**. Merge freeze **Oct 24**.
 
 ## Hard rules (hackathon)
 - Data is synthetic. Never commit real match data, real player names or licensed feeds. No third-party trademarks or logos in code, UI or demo (no club crests, no wearable brand names; say "wearable").
 - The repo must be public at submission: no secrets, no private data, no personal emails in history. Secrets live in `.env` (git-ignored); keep `.env.example` current.
 - Biometrics are sensitive: everything stays synthetic, and the pitch says real use needs player consent.
+- Inputs are stats and API-style data feeds only; no live video. The synthetic bronze data stands in for a real provider's feed, and the pipeline is built as if production data would arrive the same way.
 - AI is decision support. The coach always decides: a coach override (typed or dictated) beats any AI suggestion. Never auto-apply a substitution.
 
 ## Code conventions

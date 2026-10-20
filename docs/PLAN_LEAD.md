@@ -8,7 +8,6 @@ Owner: lead developer with Claude. Merge freeze **Oct 24**, submit **Oct 26** (d
 | Due | Task | Needs |
 |---|---|---|
 | Oct 19 (am) | Register as team representative (before Oct 20, 12:00 pm PT); add teammate | Registration form |
-| Oct 19 | Email opencode@microsoft.com: does a coach-facing use case fit the theme? | |
 | Oct 19 | Create Foundry project; deploy a chat model and Microsoft-Decision-1; fill `.env` | Azure subscription |
 | Oct 19 | Match engine: tick-based, seeded, reacts to substitutions and formation changes | |
 | Oct 21 | API streaming ticks; agents live on the stream: Coordinator, Tactician, Opponent Analyst, Fact-checker | Foundry |
