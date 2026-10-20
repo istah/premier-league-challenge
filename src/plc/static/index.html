@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Redmoor FC Coach Room</title>
+<link rel="icon" href="data:,">
 <style>
   :root { --bg:#0b0f14; --card:#131a22; --card2:#1a232d; --line:#26323f; --text:#eaf0f6; --mute:#8a9bad; --ok:#34d399; --warn:#fbbf24; --bad:#f87171; --accent:#6ea8ff; --r:16px; }
   * { box-sizing:border-box; }
@@ -22,7 +23,10 @@
   main > section { min-height:0; display:flex; flex-direction:column; }
   main > aside { min-height:0; overflow-y:auto; padding-right:6px; }
   .stage { flex:1; min-height:0; display:grid; place-items:center; }
-  .toolbar select { max-width:190px; }
+  .toolbar select { max-width:200px; }
+  [hidden] { display:none !important; }
+  #scn { padding:0 28px 10px; margin-top:-6px; color:var(--mute); font-size:14px; text-align:center; }
+  #scn b { color:var(--text); font-weight:600; } #scn em { color:var(--warn); font-style:normal; font-weight:600; }
   @media (max-width:980px){ main { grid-template-columns:1fr 340px; } }
   .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:16px; margin-bottom:16px; }
   .card h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--mute); font-weight:600; }
@@ -97,6 +101,7 @@
   <div class="scoreboard"><span>Redmoor</span><b id="score">0 - 0</b><span>Harbour Rovers</span><span class="clock" id="clock">0'</span></div>
   <div class="row"><button id="play" class="primary">Play</button><button id="step">+5 min</button></div>
 </header>
+<div id="scn"></div>
 <div class="bar"><i id="prog"></i></div>
 <main>
   <section>
@@ -104,7 +109,7 @@
       <select id="formation" title="Formation"></select>
       <select id="plansel" title="Game plan"></select>
       <span class="sp"></span>
-      <label class="mute"><input type="checkbox" id="showov"> Show tactics on pitch</label>
+      <label class="mute" style="white-space:nowrap"><input type="checkbox" id="showov"> Show tactics on pitch</label>
       <select id="heatsel" title="Heatmap"><option value="">No heatmap</option><option value="opp">Opponent heatmap</option><option value="us">Our heatmap</option></select>
     </div>
     <div class="stage"><div class="pitch" id="pitch">
@@ -273,16 +278,21 @@ function fitCard() {
   document.querySelectorAll('[data-idea]').forEach(b => b.onclick = () => { const i = f.ideas[b.dataset.idea]; send({transcript: `take off ${i.off}, bring on ${i.on}`}); });
 }
 
+function scenario() {  // one line: where we are and what to watch (lowest morning HRV in the XI)
+  const w = state.xi.reduce((a, p) => state.hrv[p.name] < state.hrv[a.name] ? p : a);
+  const watch = state.minute >= 90 ? 'Full time.' : `Watch <em>${w.name}</em>, HRV ${Math.round(state.hrv[w.name] * 100)}% of baseline.`;
+  $('scn').innerHTML = `<b>${state.minute}'</b> · <b>${state.score[0]}-${state.score[1]}</b> vs Harbour Rovers · ${watch}`;
+}
 function render() {
   $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
   $('clock').textContent = `${state.minute}'`;
   $('prog').style.width = `${state.minute / 90 * 100}%`;
-  layout(); place(); sliders(); fitCard(); overlay();
+  scenario(); layout(); place(); sliders(); fitCard(); overlay();
   $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${state.playerfit.players[p.name].archetype} · fit ${state.playerfit.players[p.name].fit}</small></span>`).join('');
   $('plansel').innerHTML = (state.mentality === 'custom' ? '<option value="custom">Plan: custom</option>' : '') + state.presets.map(m => `<option value="${m}">Plan: ${m}</option>`).join('');
   $('plansel').value = state.mentality;
   $('b-players').style.display = state.concerns.length ? 'block' : 'none';
-  $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">Formation ${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
+  $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
   $('formation').value = state.formation;
   const t = state.tactics, cls = {'Best fit': 'ok', 'Good fit': 'ok', 'Risky': 'bad'}[t.verdict];
   $('tac').innerHTML = `<span class="badge ${cls}">${t.formation}: ${t.verdict}</span>
@@ -301,6 +311,7 @@ async function staff(route = 'full', why = 'You asked') {
   feed.unshift({minute: state.minute, why, route, r}); feed = feed.slice(0, 5);
   renderFeed(); callout(feed[0]);
   $('b-now').style.display = 'block';
+  return r.notes.some(n => n.actions?.length);
 }
 function act(a) {
   if (a.type === 'plan') return send({mentality: a.value});
@@ -380,12 +391,12 @@ async function step() {
     r.tick.events.forEach(e => log(`${e.minute}' ${e.team}: ${e.detail.goal ? 'GOAL' : 'shot'} (${e.player}, xG ${e.detail.xg})`));
     roles = r.tick.roles; render(); play(r.tick.frames); suggest(r.alerts);
     if (r.alerts.length) stop();
-    for (const tr of r.triggers) await staff(tr.route, TRIGGERS[tr.route] || tr.rule);  // pause so the coach decides
+    for (const tr of r.triggers) if ((await staff(tr.route, TRIGGERS[tr.route] || tr.rule)) && ['fade', 'shape', 'opponent'].includes(tr.route)) stop();  // pause so the coach decides
   } catch (e) { stop(); }
   if (state.minute >= 90) { stop(); log('Full time'); }
 }
 function stop() { clearInterval(timer); timer = null; $('play').textContent = 'Play'; }
-$('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 1200); $('play').textContent = 'Pause'; };
+const toggle = $('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 2000); $('play').textContent = 'Pause'; };
 $('step').onclick = step;
 $('plansel').onchange = e => e.target.value !== 'custom' && send({mentality: e.target.value});
 $('formation').onchange = e => send({formation: e.target.value});
@@ -404,10 +415,11 @@ $('vtext').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); voice
 $('fab').onclick = voiceOpen;
 document.addEventListener('keydown', e => { if ((e.key === 'v' || e.key === '/') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); voiceOpen(); } });
 
-let calloutT;
+let calloutT, calloutMin = -1, calloutRank = 0;
 function callout(item) {  // the staff speak on the pitch, next to the player they mean
-  const n = item.r.notes.find(n => n.actions?.length) || item.r.notes[0], el = $('callout');
-  if (!n) return;
+  const n = item.r.notes.find(n => n.actions?.length) || item.r.notes[0], el = $('callout'), rank = n?.actions?.some(a => a.type === 'sub') ? 2 : n?.actions?.length ? 1 : 0;
+  if (!n || (!el.hidden && calloutMin === item.minute && rank < calloutRank)) return;  // within one tick the sub call beats shape/formation chatter
+  calloutMin = item.minute; calloutRank = rank;
   const who = n.actions?.[0]?.off || n.actions?.[0]?.player, p = who && pos[who];
   el.style.left = Math.min(75, Math.max(25, p ? p[0] : 50)) + '%'; el.style.top = (p ? (p[1] < 50 ? p[1] + 10 : p[1] - 38) : 6) + '%';
   el.innerHTML = `<div class="mute" style="font-size:11px;margin-bottom:4px">${item.minute}' · ${item.why}</div><b>${n.agent}</b> ${n.claim}<div>${(n.actions || []).map((a, i) => `<button class="primary" data-co="${i}">${a.label}</button>`).join('')}<button data-co="x">Not now</button></div>`;
@@ -416,7 +428,7 @@ function callout(item) {  // the staff speak on the pitch, next to the player th
   clearTimeout(calloutT); calloutT = setTimeout(() => el.hidden = true, 15000);
 }
 
-fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; $('oppname').textContent = 'Harbour Rovers'; render(); suggest([]); });
+fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; $('oppname').textContent = 'Harbour Rovers'; render(); suggest([]); setTimeout(() => { if (!timer && state.minute === 0) toggle(); }, 1500); });  // kick off on its own; the coach can pause
 </script>
 </body>
 </html>
