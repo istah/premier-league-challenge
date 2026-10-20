@@ -10,6 +10,6 @@ cp .env.example .env   # fill in Foundry project endpoint + model
 az login
 uv run python -m plc fan        # or: analyst
 uv run python -m plc.events 3   # dump synthetic events
-uv run python -m plc dataset [seed]   # regenerate data/bronze (about 3.5 MB)
+uv run python -m plc dataset [seed]   # regenerate data/bronze (about 5 MB)
 uv run pytest
 ```
