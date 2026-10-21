@@ -32,7 +32,7 @@
   .card h2 { margin:0 0 10px; font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--mute); font-weight:600; }
   .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
   .toolbar .sp { margin-left:auto; }
-  button, select { font:inherit; color:var(--text); background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:8px 14px; cursor:pointer; transition:.15s; }
+  button, select, #newgame input { font:inherit; color:var(--text); background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:8px 14px; cursor:pointer; transition:.15s; }
   button:hover, select:hover { border-color:var(--accent); }
   button.primary { background:var(--accent); color:#06121f; border-color:var(--accent); font-weight:600; }
   button.on { background:#6ea8ff22; border-color:var(--accent); color:var(--accent); }
@@ -73,6 +73,10 @@
   .toast { position:absolute; left:50%; top:12px; transform:translateX(-50%); z-index:8; background:#0f161df5; border:1px solid var(--line); border-radius:999px; padding:7px 16px; font-size:13px; box-shadow:0 8px 24px #000a; }
   .callout { position:absolute; z-index:6; width:290px; transform:translateX(-50%); background:#0f161df5; border:1px solid var(--warn); border-radius:14px; padding:12px 14px; font-size:13px; box-shadow:0 16px 40px #000c; animation:rise .25s ease-out; }
   .callout button { margin:8px 6px 0 0; padding:4px 10px; }
+  .pop.dock { position:static; width:auto; transform:none; margin-bottom:14px; }
+  .dim { opacity:.45; text-decoration:line-through; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+  #newgame { display:flex; gap:6px; align-items:center; } #newgame input { width:64px; }
   @keyframes rise { from { opacity:0; transform:translate(-50%,6px); } }
   .sl > span { cursor:pointer; border-bottom:1px dotted var(--mute); width:max-content; }
   .slnote { display:none; }
@@ -98,8 +102,10 @@
 <body>
 <header>
   <div class="brand">Redmoor FC<small>Coach Room</small></div>
-  <div class="scoreboard"><span>Redmoor</span><b id="score">0 - 0</b><span>Harbour Rovers</span><span class="clock" id="clock">0'</span></div>
-  <div class="row"><button id="play" class="primary">Play</button><button id="step">+5 min</button></div>
+  <div class="scoreboard"><span>Redmoor</span><b id="score">0 - 0</b><span id="oppscore">Opponent</span><span class="clock" id="clock">0'</span></div>
+  <div class="row"><button id="play" class="primary">Play</button><button id="step">+5 min</button>
+    <select id="speed" title="Match speed: seconds per 5 match minutes" aria-label="Match speed"><option value="6000">Slow</option><option value="4000" selected>Normal</option><option value="2000">Fast</option></select>
+    <span id="newgame"><input id="seed" type="number" min="0" value="7" title="Match seed: the same seed gives the same match" aria-label="Match seed"><select id="startform" title="Starting formation" aria-label="Starting formation"><option value="">Formation</option><option>4-3-3</option><option>4-4-2</option><option>3-5-2</option><option>3-4-3</option><option>5-3-2</option></select><button id="newbtn">New match</button></span></div>
 </header>
 <div id="scn"></div>
 <div class="bar"><i id="prog"></i></div>
@@ -119,25 +125,25 @@
       <canvas class="heat" id="heat"></canvas><svg class="ov" id="ov" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div id="ovl"></div><div id="opps"></div><div class="ball" id="ball" hidden></div><div id="players"></div>
       <button class="fab" id="fab" title="Press V and speak. Dictation tools also work: they type into the box that appears.">🎙</button>
       <div class="voice" id="voice" hidden><span class="mute">Listening…</span><input type="text" id="vtext" placeholder="say or dictate your call" autocomplete="off"></div>
-      <div class="toast" id="toast" hidden></div>
-      <div class="callout" id="callout" hidden></div>
-      <div class="pop" id="pop" hidden>
+      <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
+      <div class="callout" id="callout" hidden role="alert"></div>
+    </div></div>
+    <div class="hint" id="heatcap"></div>
+    <div class="hint" id="legend" style="display:none">Overlay: <b style="color:#6ea8ff">blue zone</b> = where we start pressing · <b>white dashed</b> = our back line · <b style="color:#a78bfa">purple dashed</b> = their back line · <b style="color:#fbbf24">arrows</b> = how we enter their box · yellow circles = players attacking the box.</div>
+    <div class="hint"><b>Green</b> = steady · <b>amber</b> = output 8-18% below his own first-half level · <b>red</b> = more than 18% below. The staff alert on a stronger rule, so an amber player may not have a suggestion yet. Tap a player to see why and to change him. Press <b>V</b> and say what you want.</div>
+  </section>
+  <aside>
+      <div class="pop dock" id="pop" hidden aria-live="polite">
         <h3 id="pn"></h3><p id="pi"></p>
         <div class="row" style="margin-bottom:8px" id="pord"></div>
         <select id="psub"></select>
         <div class="row"><button class="primary" id="pgo">Take off</button><button id="pcancel">Cancel</button></div>
       </div>
-    </div></div>
-    <div class="hint" id="heatcap"></div>
-    <div class="hint" id="legend" style="display:none">Overlay: <b style="color:#6ea8ff">blue zone</b> = where we start pressing · <b>white dashed</b> = our back line · <b style="color:#a78bfa">purple dashed</b> = their back line · <b style="color:#fbbf24">arrows</b> = how we enter their box · yellow circles = players attacking the box.</div>
-    <div class="hint">Green = steady, amber = slipping, red = fading. Tap a player to change them. Press <b>V</b> and say what you want.</div>
-  </section>
-  <aside>
-    <div class="tabs">
+    <div class="tabs" role="tablist">
       <button data-tab="now" class="on">Now<i id="b-now"></i></button><button data-tab="tactics">Tactics</button><button data-tab="players">Players<i id="b-players"></i></button><button data-tab="log">Log</button>
     </div>
     <div class="tab" id="tab-now">
-      <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute"></div></div>
+      <div class="card" id="sugcard"><h2>AI suggestion</h2><div id="sug" class="mute" aria-live="polite"></div></div>
       <div class="card"><h2>Staff notes</h2><div id="staff" class="mute" style="font-size:13px">Notes appear here, and on the pitch, as things happen.</div></div>
     </div>
     <div class="tab" id="tab-tactics" hidden>
@@ -149,7 +155,7 @@
       </div>
     </div>
     <div class="tab" id="tab-players" hidden>
-      <div class="card"><h2>Readiness check-in</h2><div id="ready" style="font-size:13px"></div></div>
+      <div class="card"><h2>Readiness check-in</h2><div id="ready" style="font-size:13px"></div><div class="hint">Hooper index: sleep, stress, soreness and fatigue each scored 1-7, total 4 (best) to 28 (worst).</div></div>
       <div class="card"><h2>Best-fit players</h2><div id="fit" style="font-size:13px"></div></div>
       <div class="card"><h2>Bench</h2><div class="bench" id="bench"></div></div>
     </div>
@@ -160,9 +166,14 @@
 const $ = id => document.getElementById(id);
 const LINES = ['GK', 'DEF', 'MID', 'FWD'];
 const LINE_X = {GK: 7, DEF: 26, MID: 50, FWD: 77};
-let peek = 0, id, state, timer, hist = {}, selected = null, pos = {}, anim = null, roles = {}, preview = null, heat = {opp: {}, us: {}};
+let resumeAfter = false, dismissed = {}, cardAlerts = [], peek = 0, id, state, timer, hist = {}, selected = null, pos = {}, anim = null, roles = {}, preview = null, heat = {opp: {}, us: {}};
 
-const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(e.detail)));
+const post = (path, body) => fetch(`/match/${id}${path}`, {method:'POST', headers:{'Content-Type':'application/json'}, body: body && JSON.stringify(body)}).then(async r => {
+  const text = await r.text();
+  let j = null; try { j = JSON.parse(text); } catch {}
+  if (r.ok) return j;
+  throw new Error(j && typeof j.detail === 'string' ? j.detail : `Server error (HTTP ${r.status}). The change was not applied.`);  // never show a parser error to the coach
+});
 const log = t => { const d = document.createElement('div'); d.textContent = t; $('log').prepend(d); };
 function toast(t, ms = 3500) { if (!t) return; const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, ms); }
 const say = toast;
@@ -175,6 +186,7 @@ function info(name) {
   const drop = 1 - avg(h.slice(-3)) / avg(h.slice(0, 8));
   return {cls: drop > 0.18 ? 'bad' : drop > 0.08 ? 'warn' : 'ok', drop, hr: h.at(-1).hr};
 }
+const STATUS = {ok: 'steady', warn: 'slipping', bad: 'fading'};
 
 function layout() {  // formation layout until the engine sends live positions
   const groups = {};
@@ -190,6 +202,7 @@ function place() {
     const f = info(p.name), [x, y] = pos[p.name] || [50, 50];
     const mv = state.moves[p.name], dir = mv ? (LINES.indexOf(mv.split('->')[1]) > LINES.indexOf(mv.split('->')[0]) ? 'mvfwd' : 'mvback') : '';
     el.className = `pl ${f.cls} ${dir}`; el.style.left = x + '%'; el.style.top = y + '%';
+    el.setAttribute('role', 'button'); el.setAttribute('aria-label', `${p.name}, ${STATUS[f.cls]}${f.drop > 0.08 ? `, output down ${Math.round(f.drop * 100)}%` : ''}. Open sheet`); el.title = `${STATUS[f.cls]}${f.drop > 0.08 ? `: output ${Math.round(-f.drop * 100)}% vs first half` : ''}`;
     el.querySelector('.dot').innerHTML = initials(p.name) + (mv ? `<span class="badgemv">${dir === 'mvfwd' ? '↑' : '↓'}</span>` : '');
     el.querySelector('.tag').innerHTML = `${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}${roles[p.name] && roles[p.name] !== 'holds shape' ? `<br><small style="color:#cbd5e1">${roles[p.name]}</small>` : ''}`;
   });
@@ -267,7 +280,9 @@ function sliders() {
   }
   document.querySelectorAll('[data-k]').forEach(r => { r.value = state.instructions[r.dataset.k]; $('v-' + r.dataset.k).textContent = r.value; const e = state.explain[r.dataset.k]; $('n-' + r.dataset.k).innerHTML = `${e.does}<br><b>Now:</b> ${e.now}`; });
   $('custom').textContent = state.mentality === 'custom' ? 'custom' : state.mentality;
-  $('ready').innerHTML = state.concerns.length ? state.concerns.map(c => `<div style="margin:5px 0">⚠ ${c}</div>`).join('') : '<span class="mute">Everyone in the XI is ready.</span>';
+  const watch = state.xi.map(p => ({p, f: info(p.name)})).filter(x => x.f.cls !== 'ok');
+  $('ready').innerHTML = (state.concerns.length ? state.concerns.map(c => `<div style="margin:5px 0">⚠ ${c}</div>`).join('') : '<span class="mute">Everyone in the XI was ready before kick-off.</span>')
+    + (watch.length ? `<div style="margin-top:10px"><b>Output watch</b> (the amber and red players on the pitch)</div>${watch.map(x => `<div style="margin:4px 0">${x.f.cls === 'bad' ? '🔴' : '🟡'} ${x.p.name}: output ${Math.round(-x.f.drop * 100)}% vs his first half, HRV ${Math.round(state.hrv[x.p.name] * 100)}%, wellness ${state.wellness[x.p.name].hooper}/28</div>`).join('')}` : '');
 }
 
 function fitCard() {
@@ -281,15 +296,17 @@ function fitCard() {
 function scenario() {  // one line: where we are and what to watch (lowest morning HRV in the XI)
   const w = state.xi.reduce((a, p) => state.hrv[p.name] < state.hrv[a.name] ? p : a);
   const watch = state.minute >= 90 ? 'Full time.' : `Watch <em>${w.name}</em>, HRV ${Math.round(state.hrv[w.name] * 100)}% of baseline.`;
-  $('scn').innerHTML = `<b>${state.minute}'</b> · <b>${state.score[0]}-${state.score[1]}</b> vs Harbour Rovers · ${watch}`;
+  $('scn').innerHTML = `<b>${state.minute}'</b> · <b>${state.score[0]}-${state.score[1]}</b> vs ${state.opponent} · ${watch} · Substitutions left ${state.substitutions.left} of 5, windows left ${state.substitutions.windows_left} of 3 (half-time extra)`;
 }
 function render() {
   $('score').textContent = `${state.score[0]} - ${state.score[1]}`;
   $('clock').textContent = `${state.minute}'`;
   $('prog').style.width = `${state.minute / 90 * 100}%`;
+  $('oppscore').textContent = state.opponent; $('oppname').textContent = state.opponent;
+  $('play').disabled = $('step').disabled = state.finished;
   scenario(); layout(); place(); sliders(); fitCard(); overlay();
-  $('bench').innerHTML = state.bench.map(p => `<span>${p.name} <small class="mute">${state.playerfit.players[p.name].archetype} · fit ${state.playerfit.players[p.name].fit}</small></span>`).join('');
-  $('plansel').innerHTML = (state.mentality === 'custom' ? '<option value="custom">Plan: custom</option>' : '') + state.presets.map(m => `<option value="${m}">Plan: ${m}</option>`).join('');
+  $('bench').innerHTML = state.bench.map(p => { const ok = state.eligible.includes(p.name); return `<span class="${ok ? '' : 'dim'}" title="${ok ? '' : 'Not available: already substituted off, or no substitution left'}">${p.name} <small class="mute">${state.playerfit.players[p.name].archetype} · fit ${state.playerfit.players[p.name].fit}</small></span>`; }).join('');
+  $('plansel').innerHTML = (state.mentality === 'custom' ? '<option value="custom">Plan: custom (your settings)</option>' : '') + state.presets.map(m => `<option value="${m}">Plan: ${m}</option>`).join('');
   $('plansel').value = state.mentality;
   $('b-players').style.display = state.concerns.length ? 'block' : 'none';
   $('formation').innerHTML = Object.entries(state.formations).map(([f, v]) => `<option value="${f}">${f} · ${v}${f === state.recommended ? ' ★' : ''}</option>`).join('');
@@ -313,12 +330,12 @@ async function staff(route = 'full', why = 'You asked') {
   $('b-now').style.display = 'block';
   return r.notes.some(n => n.actions?.length);
 }
-function act(a) {
-  if (a.type === 'plan') return send({mentality: a.value});
-  if (a.type === 'formation') return send({formation: a.value});
-  if (a.type === 'sub') return send({transcript: `take off ${a.off}, bring on ${a.on}`});
-  if (a.type === 'order') return send({orders: {[a.player]: {depth: a.depth, width: a.width}}});
-  if (a.type === 'sliders') return send({instructions: a.value});
+function act(a, answer = false) {
+  if (a.type === 'plan') return send({mentality: a.value}, answer);
+  if (a.type === 'formation') return send({formation: a.value}, answer);
+  if (a.type === 'sub') return send({off: a.off, on: a.on}, answer);
+  if (a.type === 'order') return send({orders: {[a.player]: {depth: a.depth, width: a.width}}}, answer);
+  if (a.type === 'sliders') return send({instructions: a.value}, answer);
 }
 function renderFeed() {
   $('staff').innerHTML = feed.map((f, i) => {
@@ -327,7 +344,8 @@ function renderFeed() {
       <div style="display:flex;justify-content:space-between;font-size:12px" class="mute"><span>${f.minute}' · ${f.why}</span><span title="${j.unsupported.join('; ') || 'Every number and style label was found in the match data'}" style="color:${j.grounded ? 'var(--ok)' : 'var(--bad)'}">${j.grounded ? '✓ checked against the data' : '⚠ ' + j.unsupported.length + ' unsupported'}</span></div>
       ${f.r.notes.map((n, k) => `<div style="margin:8px 0" title="from: ${n.source}"><b>${n.agent}</b><br>${n.claim}${(n.actions || []).map((a, m) => `<button class="primary" style="margin:6px 6px 0 0;padding:4px 10px" data-feed="${i}.${k}.${m}">${a.label}</button>`).join('')}</div>`).join('')}</div>`;
   }).join('') || 'Analysts report here as things happen on the pitch.';
-  document.querySelectorAll('[data-feed]').forEach(b => b.onclick = () => { const [i, k, m] = b.dataset.feed.split('.'); act(feed[i].r.notes[k].actions[m]); b.disabled = true; b.textContent += ' ✓'; });
+  document.querySelectorAll('[data-feed]').forEach(b => b.onclick = () => { const [i, k, m] = b.dataset.feed.split('.'); act(feed[i].r.notes[k].actions[m], true); b.disabled = true; b.textContent += ' ✓'; });
+  if (state && state.finished) document.querySelectorAll('[data-feed]').forEach(b => b.disabled = true);
 }
 
 function openPop(el) {
@@ -335,51 +353,68 @@ function openPop(el) {
   selected = p.name;
   const pf = state.playerfit.players[p.name];
   $('pn').textContent = `${p.name} · ${pf.archetype}`;
-  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline · wellness ${state.wellness[p.name].hooper}/28 · fit ${pf.fit}` + (roles[p.name] ? ` · now: ${roles[p.name]}` : '') + (f.hr ? ` · HR ${f.hr} · output ${f.drop > 0 ? '-' : '+'}${Math.abs(Math.round(f.drop * 100))}%` : '');
-  const bench = [...state.bench].sort((a, b) => (b.position === line) - (a.position === line) || state.playerfit.players[b.name].fit - state.playerfit.players[a.name].fit);
-  $('psub').innerHTML = `<option value="">Choose replacement...</option>` + bench.map(b => `<option value="${b.name}">${b.name} · ${state.playerfit.players[b.name].archetype} · fit ${state.playerfit.players[b.name].fit}</option>`).join('');
+  const why = f.cls === 'ok' ? 'steady' : `${STATUS[f.cls]}: output ${Math.round(-f.drop * 100)}% vs his first half (amber from -8%, red from -18%)`;
+  $('pi').textContent = `${line} · rating ${p.rating} · morning HRV ${Math.round(state.hrv[p.name] * 100)}% of baseline · wellness ${state.wellness[p.name].hooper}/28 (4 best, 28 worst) · fit ${pf.fit}` + (roles[p.name] ? ` · now: ${roles[p.name]}` : '') + (f.hr ? ` · HR ${f.hr}` : '') + ` · status ${why}`;
+  const keeper = p.position === 'GK';
+  const bench = state.bench.filter(b => state.eligible.includes(b.name) && (b.position === 'GK') === keeper)  // only players who may legally come on: not already used, not a goalkeeper for an outfield player
+    .sort((a, b) => (b.position === line) - (a.position === line) || state.playerfit.players[b.name].fit - state.playerfit.players[a.name].fit);
+  $('psub').innerHTML = (bench.length ? '<option value="">Choose replacement...</option>' : '<option value="">No eligible replacement</option>') + bench.map(b => `<option value="${b.name}">${b.name} · ${state.playerfit.players[b.name].archetype} · fit ${state.playerfit.players[b.name].fit}</option>`).join('');
   const o = state.orders[p.name] || {depth: 0, width: 0};
   $('pord').innerHTML = [['↓ Deeper', -12, 0], ['↑ Higher', 12, 0], ['↔ Wider', 0, 12], ['⇥ Narrower', 0, -12], ['Reset', null, null]].map(([t, d, w]) => `<button style="padding:3px 8px;font-size:12px" data-ord="${d},${w}">${t}</button>`).join('') + (o.depth || o.width ? `<div class="mute" style="font-size:12px;width:100%">Order: depth ${o.depth}, width ${o.width}</div>` : '');
   document.querySelectorAll('[data-ord]').forEach(b => b.onclick = () => { const [d, w] = b.dataset.ord.split(','); $('pop').hidden = true; send({orders: {[p.name]: d === 'null' ? {depth: 0, width: 0} : {depth: o.depth + +d, width: o.width + +w}}}); });
-  const pop = $('pop'); pop.style.left = el.style.left; pop.style.top = el.style.top; pop.hidden = false;
-  pop.style.transform = parseFloat(el.style.top) > 60 ? 'translate(-50%,calc(-100% - 36px))' : 'translate(-50%,36px)';
+  $('pop').hidden = false; $('pop').scrollIntoView({block: 'nearest'});  // docked in the side panel: it never covers the pitch
 }
 document.addEventListener('click', e => { if (!$('pop').contains(e.target)) $('pop').hidden = true; });
 $('pcancel').onclick = () => $('pop').hidden = true;
-$('pgo').onclick = () => { const on = $('psub').value; if (!on) return $('psub').focus(); $('pop').hidden = true; send({off: selected, on}); };
+$('pgo').onclick = () => { const on = $('psub').value; if (!on || state.finished) return $('psub').focus(); $('pop').hidden = true; send({off: selected, on}); };
 
 function tab(name) {
   if (name === 'now') $('b-now').style.display = 'none';
   document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== 'tab-' + name);
-  document.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === name); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', b.dataset.tab === name); });
 }
 document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => tab(b.dataset.tab));
 
+const DISMISS_MIN = 20, WORSE_BY = 0.10;
+function visibleAlerts(alerts) {  // a dismissed player is not offered again unless he gets clearly worse or 20 minutes pass
+  return alerts.filter(a => state.xi.some(p => p.name === a.off)).filter(a => { const d = dismissed[a.off]; return !d || a.drop - d.drop >= WORSE_BY || state.minute - d.minute >= DISMISS_MIN; });
+}
 function suggest(alerts) {
-  const a = alerts.find(x => state.xi.some(p => p.name === x.off));
-  $('sugcard').classList.toggle('sug', !!a);
-  $('b-now').style.display = a ? 'block' : 'none';
-  if (a) tab('now');
-  $('sug').innerHTML = a ? `<span class="badge">${Math.round(a.probability * 100)}% confidence</span>
-    <p style="margin:10px 0 4px"><b>${a.off}</b> off, <b>${a.on}</b> on</p><div class="mute" style="font-size:13px">${a.evidence}</div>
-    <div class="row" style="margin-top:12px"><button class="primary" id="accept">Accept</button><button id="dismiss">Keep him on</button></div>`
-    : 'All quiet. The AI checks every player against their own baseline each 5 minutes.';
-  if (a) {
-    $('accept').onclick = () => send({off: a.off, on: a.on});
-    $('dismiss').onclick = () => { suggest([]); say(`You kept ${a.off} on.`); };
-  }
+  const items = state.finished ? [] : visibleAlerts(alerts).slice(0, 3);
+  cardAlerts = items;
+  $('sugcard').classList.toggle('sug', items.some(a => a.on !== 'none available'));
+  $('b-now').style.display = items.length ? 'block' : 'none';
+  if (items.length) tab('now');
+  $('sug').innerHTML = items.length ? items.map((a, i) => `<div style="${i ? 'margin-top:12px;padding-top:10px;border-top:1px solid var(--line)' : ''}">
+      <span class="badge" title="Rule score of the fade alert, not a probability">${a.strength || 'alert'} signal</span>
+      ${a.on === 'none available' ? `<p style="margin:10px 0 4px"><b>${a.off}</b> is fading</p><div class="mute" style="font-size:13px">${a.evidence}. No rested replacement is available in his position.</div>`
+        : `<p style="margin:10px 0 4px"><b>${a.off}</b> off, <b>${a.on}</b> on</p><div class="mute" style="font-size:13px">${a.evidence}</div>`}
+      <div class="row" style="margin-top:10px">${a.on === 'none available' ? '' : `<button class="primary" data-acc="${i}">Accept</button>`}<button data-keep="${i}">Keep him on</button></div></div>`).join('')
+    : (state.finished ? 'Full time. No further changes are possible.' : 'All quiet. The AI checks every player against their own baseline each 5 minutes.');
+  document.querySelectorAll('[data-acc]').forEach(b => b.onclick = () => { const a = items[b.dataset.acc]; send({off: a.off, on: a.on}, true); });
+  document.querySelectorAll('[data-keep]').forEach(b => b.onclick = () => { const a = items[b.dataset.keep]; dismissed[a.off] = {minute: state.minute, drop: a.drop || 0}; hideCallout(); suggest(alerts); say(`You kept ${a.off} on. The staff will say again if he gets clearly worse.`); resume(); });
 }
 
-async function send(body) {
+async function send(body, answer = false) {
   try {
-    const was = JSON.stringify([state.formation, state.mentality, state.instructions, state.orders]), r = await post('/decision', body), before = state.formation;
+    const prev = {f: state.formation, m: state.mentality, i: {...state.instructions}, o: JSON.stringify(state.orders)};
+    const r = await post('/decision', body);
     state = r;
-    if (r.applied) { log(`${state.minute}' ${r.applied.source === 'coach' ? 'Coach' : 'AI suggestion accepted'}: ${r.applied.off} off, ${r.applied.on} on`); toast(`${r.applied.off} off, ${r.applied.on} on`); suggest([]); }
-    else if (JSON.stringify([r.formation, r.mentality, r.instructions, r.orders]) !== was) toast(r.formation !== before ? `Formation ${r.formation}` : 'Done');
-    else if (body.transcript) toast("Didn't catch that. Try 'take off Vance, bring on Haas'.");
-    if (r.formation !== before) log(`${state.minute}' Formation: ${r.formation}`);
+    if (r.applied) { log(`${state.minute}' ${r.applied.source === 'coach' ? 'Coach' : 'AI suggestion accepted'}: ${r.applied.off} off, ${r.applied.on} on`); toast(`${r.applied.off} off, ${r.applied.on} on`); hideCallout(); }
+    else {
+      const parts = [];
+      if (r.formation !== prev.f) parts.push(`Formation ${r.formation}`);
+      if (r.mentality !== prev.m && r.mentality !== 'custom') parts.push(`Plan ${r.mentality}`);
+      Object.keys(r.instructions).filter(k => r.instructions[k] !== prev.i[k]).forEach(k => parts.push(`${SLIDERS[k]} ${r.instructions[k]}`));
+      if (JSON.stringify(r.orders) !== prev.o) parts.push('Player order updated');
+      if (parts.length) toast(parts.join(' · ')); else if (body.transcript) toast("Didn't catch that. Try 'take off Vance, bring on Haas'.");
+      if (body.mentality || body.formation) hideCallout();
+    }
+    if (r.formation !== prev.f) log(`${state.minute}' Formation: ${r.formation}`);
+    if (r.applied || answer) suggest(cardAlerts);
     render();
-  } catch (e) { toast(String(e)); }
+    if (answer) resume();
+  } catch (e) { toast(e.message || String(e), 6000); }
 }
 
 async function step() {
@@ -390,13 +425,17 @@ async function step() {
     r.tick.snaps.forEach(s => (hist[s.player] ||= []).push(s));
     r.tick.events.forEach(e => log(`${e.minute}' ${e.team}: ${e.detail.goal ? 'GOAL' : 'shot'} (${e.player}, xG ${e.detail.xg})`));
     roles = r.tick.roles; render(); play(r.tick.frames); suggest(r.alerts);
-    if (r.alerts.length) stop();
-    for (const tr of r.triggers) if ((await staff(tr.route, TRIGGERS[tr.route] || tr.rule)) && ['fade', 'shape', 'opponent'].includes(tr.route)) stop();  // pause so the coach decides
-  } catch (e) { stop(); }
+    if (state.finished) { hideCallout(); stop(); log('Full time'); return; }
+    if (visibleAlerts(r.alerts).length) stop(true);
+    for (const tr of r.triggers) if ((await staff(tr.route, TRIGGERS[tr.route] || tr.rule)) && ['fade', 'shape', 'opponent'].includes(tr.route) || tr.route === 'readiness') stop(true);  // pause so the coach decides
+  } catch (e) { stop(); toast(e.message || String(e), 6000); }
   if (state.minute >= 90) { stop(); log('Full time'); }
 }
-function stop() { clearInterval(timer); timer = null; $('play').textContent = 'Play'; }
-const toggle = $('play').onclick = () => { if (timer) return stop(); timer = setInterval(step, 2000); $('play').textContent = 'Pause'; };
+function stop(waiting = false) { clearInterval(timer); timer = null; resumeAfter = waiting; $('play').textContent = waiting ? 'Resume' : 'Play'; }
+function start() { if (timer || state.finished) return; timer = setInterval(step, +$('speed').value); resumeAfter = false; $('play').textContent = 'Pause'; }
+function resume() { if (resumeAfter && !state.finished) start(); }  // after the coach answers a pause, the match goes on by itself
+const toggle = $('play').onclick = () => { if (timer) return stop(); start(); };
+$('speed').onchange = () => { if (timer) { clearInterval(timer); timer = setInterval(step, +$('speed').value); } };
 $('step').onclick = step;
 $('plansel').onchange = e => e.target.value !== 'custom' && send({mentality: e.target.value});
 $('formation').onchange = e => send({formation: e.target.value});
@@ -415,20 +454,36 @@ $('vtext').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); voice
 $('fab').onclick = voiceOpen;
 document.addEventListener('keydown', e => { if ((e.key === 'v' || e.key === '/') && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) { e.preventDefault(); voiceOpen(); } });
 
-let calloutT, calloutMin = -1, calloutRank = 0;
-function callout(item) {  // the staff speak on the pitch, next to the player they mean
-  const n = item.r.notes.find(n => n.actions?.length) || item.r.notes[0], el = $('callout'), rank = n?.actions?.some(a => a.type === 'sub') ? 2 : n?.actions?.length ? 1 : 0;
-  if (!n || (!el.hidden && calloutMin === item.minute && rank < calloutRank)) return;  // within one tick the sub call beats shape/formation chatter
-  calloutMin = item.minute; calloutRank = rank;
-  const who = n.actions?.[0]?.off || n.actions?.[0]?.player, p = who && pos[who];
-  el.style.left = Math.min(75, Math.max(25, p ? p[0] : 50)) + '%'; el.style.top = (p ? (p[1] < 50 ? p[1] + 10 : p[1] - 38) : 6) + '%';
+let calloutT, calloutRank = 0;
+function hideCallout() { $('callout').hidden = true; clearTimeout(calloutT); calloutRank = 0; }
+function callout(item) {  // the staff speak on the pitch edge nearest the player they mean, so the middle of the pitch stays visible
+  const n = item.r.notes.find(n => n.actions?.length) || item.r.notes[0], el = $('callout'), sub = n?.actions?.find(a => a.type === 'sub');
+  const rank = sub ? 2 : n?.actions?.length || item.route === 'readiness' ? 1 : 0;
+  if (!n || state.finished) return;
+  if (sub && cardAlerts.some(a => a.off === sub.off && a.on === sub.on)) return;  // the suggestion card already carries this substitution
+  if (!el.hidden && rank < calloutRank) return;  // an unanswered, more important call is not overwritten by chatter
+  calloutRank = rank;
+  const who = n.actions?.[0]?.off || n.actions?.[0]?.player, p = who && pos[who], low = p && p[1] >= 50;
+  const right = p ? p[0] < 50 : true;  // the corner farthest from the player he means
+  el.style.transform = 'none'; el.style.left = right ? 'auto' : '2%'; el.style.right = right ? '2%' : 'auto'; el.style.top = low ? '2%' : 'auto'; el.style.bottom = low ? 'auto' : '2%';
   el.innerHTML = `<div class="mute" style="font-size:11px;margin-bottom:4px">${item.minute}' · ${item.why}</div><b>${n.agent}</b> ${n.claim}<div>${(n.actions || []).map((a, i) => `<button class="primary" data-co="${i}">${a.label}</button>`).join('')}<button data-co="x">Not now</button></div>`;
   el.hidden = false;
-  el.querySelectorAll('[data-co]').forEach(b => b.onclick = () => { el.hidden = true; if (b.dataset.co !== 'x') act(n.actions[b.dataset.co]); });
+  el.querySelectorAll('[data-co]').forEach(b => b.onclick = () => { hideCallout(); if (b.dataset.co !== 'x') act(n.actions[b.dataset.co], true); else resume(); });
   clearTimeout(calloutT); calloutT = setTimeout(() => el.hidden = true, 15000);
 }
 
-fetch('/match', {method:'POST'}).then(r => r.json()).then(s => { id = s.id; state = s; $('oppname').textContent = 'Harbour Rovers'; render(); suggest([]); setTimeout(() => { if (!timer && state.minute === 0) toggle(); }, 1500); });  // kick off on its own; the coach can pause
+async function startMatch() {
+  stop(); hideCallout(); hist = {}; pos = {}; roles = {}; feed = []; dismissed = {}; cardAlerts = []; frameLive = false; heat = {opp: {}, us: {}};
+  $('log').innerHTML = ''; $('players').innerHTML = ''; $('opps').innerHTML = ''; renderFeed();
+  const q = new URLSearchParams({seed: $('seed').value || 7}); if ($('startform').value) q.set('formation', $('startform').value);
+  const r = await fetch('/match?' + q, {method: 'POST'});
+  const j = await r.json().catch(() => null);
+  if (!r.ok) return toast(j && typeof j.detail === 'string' ? j.detail : `Could not start the match (HTTP ${r.status})`, 6000);
+  id = j.id; state = j; render(); suggest([]);
+  setTimeout(() => { if (!timer && state.minute === 0 && j.id === id) start(); }, 1500);  // kick off on its own; the coach can pause
+}
+$('newbtn').onclick = startMatch;
+startMatch();
 </script>
 </body>
 </html>
