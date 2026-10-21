@@ -2,6 +2,7 @@
 import random
 from dataclasses import dataclass
 
+from . import fatigue
 from .squad import Player
 
 
@@ -15,14 +16,16 @@ class Snapshot:
     hrv_baseline_ratio: float  # match-day morning HRV / personal baseline
 
 
-def track_match(starters: list[Player], hrv_ratio: dict[str, float], seed: int = 0) -> list[Snapshot]:
-    """Players with low match-day HRV fade after ~55', which is the storyline the agents must catch."""
+def track_match(starters: list[Player], hrv_ratio: dict[str, float], seed: int = 0, bounded: bool = False) -> list[Snapshot]:
+    """Players with low match-day HRV fade after ~55', which is the storyline the agents must catch.
+
+    bounded=False keeps the original unbounded formula so data/bronze (seed 0) regenerates byte for byte; the demo uses bounded=True."""
     rng = random.Random(seed)
     out = []
     for minute in range(5, 95, 5):
         for p in starters:
             r = hrv_ratio.get(p.name, 1.0)
-            fade = max(0, minute - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
+            fade = fatigue.fade(minute, r) if bounded else max(0, minute - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
             out.append(Snapshot(minute, p.name, round(rng.gauss(560, 40) * (1 - fade)), max(0, round(rng.gauss(2, 1) * (1 - fade))),
                                 round(rng.gauss(165, 6) + fade * 12), r))
     return out

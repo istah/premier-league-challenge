@@ -20,7 +20,8 @@ def test_api_coach_beats_ai():
     ai_off = r["alerts"][0]["off"]
     ai_on = r["alerts"][0]["on"]
     off = next(p["name"] for p in r["xi"] if p["position"] != "GK" and p["name"] != ai_off)
-    on = next(b["name"] for b in r["bench"] if b["name"] != ai_on)
+    pos = {p["name"]: p["position"] for p in r["xi"]}
+    on = next(b["name"] for b in r["bench"] if b["name"] != ai_on and b["position"] == pos[off])  # a goalkeeper may only be replaced by a goalkeeper
     out = c.post(f"/match/{mid}/decision", json={"off": ai_off, "on": ai_on, "transcript": f"take off {off}, bring on {on}"}).json()
     assert out["applied"] == {"off": off, "on": on, "source": "coach"}
     names = {p["name"] for p in out["xi"]}
@@ -64,6 +65,6 @@ def test_staff_survives_substitution_and_early_goal_route():
     for i in range(18):
         m.tick()
         if i == 9:
-            m.substitute(m.xi[5].name, m.bench[0].name)
+            m.substitute(m.xi[5].name, next(b.name for b in m.bench if b.position == m.xi[5].position))
         for route in ("full", "goal", "shape"):
             orchestrator.run(m, route)

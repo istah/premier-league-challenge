@@ -5,6 +5,7 @@ Code, not an LLM: the agents and the coach interface only read ticks and send co
 import random
 from dataclasses import dataclass, field
 
+from . import fatigue
 from .events import Event
 from .fixtures import make_opponent
 from .readiness import match_day_hrv, match_day_wellness, pick_xi, wellness_ratio
@@ -24,6 +25,30 @@ def _plan(press, line, width, tempo, direct, cross, box):
 PRESETS = {"defend": _plan(35, 30, 50, 40, 50, 50, 40), "balanced": _plan(50, 50, 50, 50, 50, 50, 50), "attack": _plan(70, 70, 60, 65, 55, 55, 70),
            "counter": _plan(25, 25, 45, 80, 85, 40, 40), "possession": _plan(55, 60, 55, 35, 20, 30, 60), "gegenpress": _plan(90, 75, 50, 85, 60, 45, 60),
            "wings": _plan(50, 55, 85, 55, 50, 85, 80), "inside": _plan(50, 55, 35, 50, 40, 15, 60)}
+
+
+def probability(x: float) -> float:
+    """A chance per tick must stay a probability whatever the sliders and ratings are."""
+    return max(0.0, min(1.0, x))
+
+
+class IllegalSubstitution(ValueError):
+    """A substitution the rules do not allow. `code` is stable for API consumers, the message is for the coach."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass(frozen=True)
+class SubRules:
+    """Premier League regulation matches: five substitutes, made in at most three in-play windows, plus half-time, no re-entry.
+    None disables a limit. Minute 0 is team selection, not a substitution.
+    Rule source: the five-substitute rule in three windows plus half-time, adopted by the Premier League for 2022-23 (see audit/04_stability_implementation.md)."""
+    max_subs: int | None = 5
+    max_windows: int | None = 3
+    halftime_minute: int = 45  # the engine has no pause: the state after the 45' tick is the interval (activator.py uses the same minute)
+    allow_reentry: bool = False
 
 
 @dataclass
@@ -70,6 +95,9 @@ class Match:
     shapes: list[dict[str, Shape]] = field(default_factory=list)
     orders: dict = field(default_factory=dict)  # coach's individual instructions: name -> {depth, width}, in pitch % (+ higher / wider)
     last_frame: dict = field(default_factory=dict)
+    rules: SubRules = field(default_factory=SubRules)
+    sub_log: list[dict] = field(default_factory=list)  # {minute, off, on, half_time} for every substitution after kick-off
+    advice_log: dict = field(default_factory=dict)  # (type, value) -> (minute, state) of staff advice already shown, so it is not repeated
 
     def __post_init__(self):
         self.rng = random.Random(self.seed)
@@ -81,7 +109,7 @@ class Match:
         r = min(self.hrv.get(p.name, 1.0), wellness_ratio(self.wellness[p.name]) if p.name in self.wellness else 9)
         i = self.instructions
         played = (self.minute - self.entered[p.name]) * max(0.5, 1 + 0.008 * (i["press"] - 50) + 0.006 * (i["tempo"] - 50))  # pressing hard tires players sooner
-        return max(0, played - 55) / 35 * max(0, 1 - r) * 3 if r < 0.9 else 0
+        return fatigue.fade(played, r)
 
     def distance(self, p: Player) -> int:
         return abs(ORDER.get(self.line[p.name], 0) - ORDER.get(p.position, 0))
@@ -92,18 +120,62 @@ class Match:
     def strength(self) -> float:
         return sum(p.rating * (1 - self.fade(p)) * PENALTY[self.distance(p)] for p in self.xi) / len(self.xi)
 
+    @property
+    def subs_used(self) -> int:
+        return len(self.sub_log)
+
+    @property
+    def windows_used(self) -> int:
+        return len({s["minute"] for s in self.sub_log if not s["half_time"]})
+
+    @property
+    def subbed_off(self) -> set[str]:
+        return {s["off"] for s in self.sub_log}
+
+    def _window_open(self) -> bool:
+        """Can a substitution be made now without opening a fourth in-play window?"""
+        used = {s["minute"] for s in self.sub_log if not s["half_time"]}
+        return self.rules.max_windows is None or self.minute in used or len(used) < self.rules.max_windows
+
+    @property
+    def eligible_bench(self) -> list[Player]:
+        """Who the staff may suggest right now: nobody once the substitutions or windows are used up, and nobody who already left the pitch."""
+        r = self.rules
+        if r.max_subs is not None and self.subs_used >= r.max_subs or self.minute not in (0, r.halftime_minute) and not self._window_open():
+            return []
+        return [b for b in self.bench if r.allow_reentry or b.name not in self.subbed_off]
+
     def substitute(self, off: str, on: str) -> None:
-        out, inn = next(p for p in self.xi if p.name == off), next(p for p in self.bench if p.name == on)
+        """Swap `off` (on the pitch) for `on` (on the bench), or raise IllegalSubstitution without changing anything."""
+        out, inn, rules = next((p for p in self.xi if p.name == off), None), next((p for p in self.bench if p.name == on), None), self.rules
+        if out is None:
+            raise IllegalSubstitution("not_on_pitch", f"{off} is not on the pitch")
+        if inn is None:
+            raise IllegalSubstitution("not_on_bench", f"{on} is not on the bench")
+        if (out.position == "GK") != (inn.position == "GK"):
+            raise IllegalSubstitution("goalkeeper_swap", "A goalkeeper can only be replaced by a goalkeeper, and a goalkeeper cannot replace an outfield player")
+        pre_match, half_time = self.minute == 0, self.minute == rules.halftime_minute
+        if not pre_match:
+            if on in self.subbed_off and not rules.allow_reentry:
+                raise IllegalSubstitution("reentry_not_allowed", f"{on} was substituted off and cannot return")
+            if rules.max_subs is not None and self.subs_used >= rules.max_subs:
+                raise IllegalSubstitution("substitution_limit_reached", f"All {rules.max_subs} substitutions are used")
+            if not half_time and not self._window_open():
+                raise IllegalSubstitution("no_substitution_window", f"All {rules.max_windows} substitution windows are used; the next chance is half-time or none")
+            self.sub_log.append({"minute": self.minute, "off": off, "on": on, "half_time": half_time})
         self.xi[self.xi.index(out)], self.bench[self.bench.index(inn)] = inn, out
         self.entered[inn.name] = self.minute
         self.line[inn.name] = self.line.pop(out.name)
+        if off in self.last_frame:  # the newcomer takes the leaver's last position, so every player on the pitch always has one
+            self.last_frame[on] = self.last_frame.pop(off)
+        self.orders.pop(off, None)  # an order belongs to the player it was given to
 
     def set_formation(self, formation: str) -> None:
         """Re-deals the outfield into the new lines from natural positions, so players shift along the chain (a midfielder drops into defence, a forward into midfield).
         Within a line the lowest-rated players are dealt first, so the strongest keep their natural role. A modelling choice."""
         if formation not in FORMATIONS:
             return
-        outfield = sorted((p for p in self.xi if self.line[p.name] != "GK"), key=lambda p: (ORDER[p.position], p.rating))
+        outfield = sorted((p for p in self.xi if self.line[p.name] != "GK"), key=lambda p: (ORDER.get(p.position, 0), p.rating))
         lines = [line for line, n in zip(("DEF", "MID", "FWD"), FORMATIONS[formation]) for _ in range(n)]
         self.line.update({p.name: line for p, line in zip(outfield, lines)})
         self.formation = formation
@@ -152,7 +224,7 @@ class Match:
         fit = assess(self.formation, self.profile).fit
         mine, theirs = mine * (1 + fit), theirs * (1 - fit / 2)
         events = []
-        for side, chance in ((0, 0.35 * self.strength() / 70 * mine), (1, 0.35 * self.opp_strength / 70 * theirs)):
+        for side, chance in ((0, probability(0.35 * self.strength() / 70 * mine)), (1, probability(0.35 * self.opp_strength / 70 * theirs))):
             if self.rng.random() < chance:
                 xg = round(self.rng.uniform(0.03, 0.5 - 0.003 * (i["cross"] - 50) if side == 0 else 0.5), 2)  # crosses: more shots, lower quality
                 goal = self.rng.random() < xg
