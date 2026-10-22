@@ -14,7 +14,7 @@ from .events import Event
 from .live import live_alerts
 from .readiness import concerns
 from .style import classify, shifts
-from .tactics import assess, recommend, their_formation
+from .tactics import FORMATIONS, assess, recommend, their_formation, why_switch
 
 
 def shape_issues(m: Match, styles: list[dict]) -> list[dict]:
@@ -54,9 +54,10 @@ def gold_facts(m: Match) -> dict:
         "their_style": [asdict(s) for s in classify([h["them"] for h in recent])],
         "their_shifts": shifts(m.shapes, "them"), "our_shifts": shifts(m.shapes, "us"),
         "tactical_read": asdict(assess(m.formation, m.profile)), "recommended_formation": recommend(m.profile),
+        "switch_reasons": why_switch(m.formation, recommend(m.profile), m.profile) if recommend(m.profile) != m.formation else [],
         "our_instructions": m.instructions, "readiness_concerns": concerns(m.xi, m.hrv, m.wellness),
         "shape_issues": shape_issues(m, [asdict(x) for x in classify([h["us"] for h in recent])]), "orders": m.orders,
-        "alerts": [asdict(a) for a in live_alerts(m.minute, m.snaps, m.xi, m.bench, m.hrv)], "possession_pct": round(sum(h["us"].possession for h in recent) / len(recent), 1),
+        "alerts": [asdict(a) for a in live_alerts(m.minute, m.snaps, m.xi, m.eligible_bench, m.hrv)], "possession_pct": round(sum(h["us"].possession for h in recent) / len(recent), 1),
         "xg": {"us": round(sum(e.detail["xg"] for e in m.events if e.team != m.opponent), 2), "them": round(sum(e.detail["xg"] for e in m.events if e.team == m.opponent), 2)},
         "last_goal": next(({"team": e.team, "player": e.player, "minute": e.minute} for e in reversed(m.events) if e.detail.get("goal")), None),
         "out_of_position": [f"{n} ({mv})" for n, mv in m.moves().items()],
@@ -77,35 +78,60 @@ def offline_briefing(f: dict, route: str = "full") -> list[dict]:
     def add(agent, claim, source, actions=None):
         notes.append({"agent": agent, "claim": claim, "source": source, **({"actions": actions} if actions else {})})
 
+    lead, minute = us - them, f["minute"]
+    cur_f = f["our_formation"]
+    fwd = lambda name: FORMATIONS[name][2]
+    # One plan for the current state, shared by every route, so two briefings in the same minute never offer opposite plans.
+    if lead < 0 and minute >= 60:
+        want = "attack"
+    elif lead > 0 and minute >= 60:
+        want = "defend"
+    else:
+        want = "counter" if any(s["label"] == "high block" for s in f["their_style"]) else "possession" if any(s["label"] in ("low block", "mid block") for s in f["their_style"]) else "balanced"
+    PLAN_TEXT = {"attack": "Commit more players forward.", "defend": "Protect the lead: drop the line and stay compact.", "counter": "Their line is high: change to a direct plan and play in behind.",
+                 "possession": "Their block is deep: move the ball patiently.", "balanced": "Keep the balance."}
     plan = lambda p: {"type": "plan", "value": p, "label": f"Switch to {p} plan"}
+    plan_action = [plan(want)] if want != f["our_mentality"] else []  # never offer the plan that is already on
     shape = f"{opp} play a {f['their_formation']} and show: {_labels(f['their_style'])}."
-    advice = ([{"type": "formation", "value": f["recommended_formation"], "label": f"Use {f['recommended_formation']}"}] if f["recommended_formation"] != f["our_formation"] else [])
-    read = f"{t['formation']} is rated '{t['verdict']}': {t['reasons'][0]}. " + (f"Switch to {f['recommended_formation']}." if advice else "Keep the shape.")
-    high = any(s["label"] == "high block" for s in f["their_style"])
+    rec = f["recommended_formation"]
+    # Switch advice only when the current shape is rated Risky, and never against the direction of the plan.
+    switch = rec != cur_f and t["verdict"] == "Risky" and not (want == "defend" and fwd(rec) > fwd(cur_f)) and not (want == "attack" and fwd(rec) < fwd(cur_f))
+    advice = [{"type": "formation", "value": rec, "label": f"Use {rec}"}] if switch else []
+    why = "; ".join(f["switch_reasons"])
+    read = (f"{cur_f} is rated '{t['verdict']}' against {opp}. Switch to {rec}: {why}." if switch
+            else f"{cur_f} is rated '{t['verdict']}': {t['reasons'][0]}. Keep the shape.")
+    mood = "the current settings" if f["our_mentality"] == "custom" else f"the plan that worked: {f['our_mentality']}"
 
     if route == "fade":
         for a in f["alerts"]:
-            add("Formation Tactician", f"Change needed: {a['off']} is fading ({a['evidence']}). Bring on {a['on']}.", "alerts",
-                [{"type": "sub", "off": a["off"], "on": a["on"], "label": f"{a['off']} off, {a['on']} on"}])
+            add("Formation Tactician", f"Change needed: {a['off']} is fading ({a['evidence']}). " + (f"Bring on {a['on']}." if a["on"] != "none available" else "No rested replacement is available in his position."), "alerts",
+                [{"type": "sub", "off": a["off"], "on": a["on"], "label": f"{a['off']} off, {a['on']} on"}] if a["on"] != "none available" else None)
         add("Own-Style Analyst", f"We are a {f['our_formation']} showing: {_labels(f['our_style'])}. Tired legs will stretch the gaps.", "our_formation, our_style")
     elif route == "opponent":
         add("Opponent Analyst", shape, "their_formation, their_style")
         for sh in f["their_shifts"]:
-            add("Opponent Analyst", f"{opp} have {sh}. " + ("Be patient: more inside passes and cutbacks." if "high block to a" in sh else "Press them higher."), "their_shifts",
-                [plan("inside" if "high block to a" in sh else "gegenpress")])
-        add("Formation Tactician", ("Their line is high: change to a direct plan and play in behind. " if high else "Their block is deep: move the ball patiently. ") + read, "their_style, tactical_read",
-            [plan("counter" if high else "possession")] + advice)
+            add("Opponent Analyst", f"{opp} have {sh}.", "their_shifts")
+        add("Formation Tactician", PLAN_TEXT[want] + " " + read, "their_style, tactical_read", plan_action + advice)
     elif route == "goal":
         g = f["last_goal"] or {"team": "", "minute": f["minute"]}
         mine = g and g["team"] != f["opponent"]
-        add("Own-Style Analyst" if mine else "Opponent Analyst", (f"We scored at minute {g['minute']} (score {us}-{them}). Keep the plan that worked: {f['our_mentality']}." if mine
-            else f"{opp} scored at minute {g['minute']} (score {us}-{them}). Do not chase yet: hold the shape and keep the press measured."), "last_goal, score",
-            None if mine else [plan("balanced")])
+        if mine:
+            add("Own-Style Analyst", f"We scored at minute {g['minute']} (score {us}-{them}). Keep {mood}.", "last_goal, score")
+        else:
+            if lead > 0:
+                text = f"{opp} scored at minute {g['minute']} (score {us}-{them}). We still lead: keep the shape and do not open up."
+            elif lead == 0:
+                text = f"{opp} scored at minute {g['minute']} (score {us}-{them}). Level again: hold the shape and keep the press measured."
+            elif lead == -1 and minute < 60:
+                text = f"{opp} scored at minute {g['minute']} (score {us}-{them}). Do not chase yet: hold the shape and keep the press measured."
+            else:
+                text = f"{opp} scored at minute {g['minute']} (score {us}-{them}). We are behind: raise the tempo and commit more players forward."
+            add("Opponent Analyst", text, "last_goal, score", plan_action if lead < 0 else None)
         add("Formation Tactician", read, "tactical_read, recommended_formation", advice)
     elif route == "losing":
-        add("Formation Tactician", f"Behind {us}-{them} at minute {f['minute']}. Commit more players forward. " + read, "score, tactical_read", [plan("attack")] + advice)
+        add("Formation Tactician", f"Behind {us}-{them} at minute {f['minute']}. {PLAN_TEXT['attack']} " + read, "score, tactical_read", ([plan("attack")] if f["our_mentality"] != "attack" else []) + advice)
     elif route == "leading":
-        add("Formation Tactician", f"Ahead {us}-{them} at minute {f['minute']}. Protect the lead: drop the line and stay compact. " + read, "score, tactical_read", [plan("defend")] + advice)
+        add("Formation Tactician", f"Ahead {us}-{them} at minute {f['minute']}. {PLAN_TEXT['defend']} " + read, "score, tactical_read", ([plan("defend")] if f["our_mentality"] != "defend" else []) + advice)
     elif route == "shape":
         for i in f["shape_issues"]:
             if i["kind"] == "line_too_high":

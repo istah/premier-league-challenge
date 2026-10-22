@@ -58,7 +58,7 @@ def concerns(xi: list[Player], hrv: dict[str, float], wellness: dict | None = No
     for p in xi:
         low_hrv, poor = hrv[p.name] < NOT_READY, bool(wellness) and hooper(wellness[p.name]) >= POOR_WELLNESS
         if low_hrv:
-            out.append(f"{p.name}: match-day HRV {hrv[p.name]:.0%} of baseline" + (f", wellness poor (Hooper {hooper(wellness[p.name])}/28)" if poor else ""))
+            out.append(f"{p.name}: match-day HRV {hrv[p.name]:.0%} of baseline" + (f", wellness poor (Hooper {hooper(wellness[p.name])}/28; 4 is best, 28 is worst)" if poor else ""))
         elif poor:
-            out.append(f"{p.name}: HRV looks fine ({hrv[p.name]:.0%}) but wellness is poor (Hooper {hooper(wellness[p.name])}/28); HRV alone would miss this")
+            out.append(f"{p.name}: HRV looks fine ({hrv[p.name]:.0%}) but his own wellness check-in is poor (Hooper {hooper(wellness[p.name])}/28; 4 is best, 28 is worst); HRV alone would miss this")
     return out

@@ -35,7 +35,7 @@ def run(seed: int = 7, dictation: str | None = None):
         print(f"  AI had {tired} resting (HRV {hrv[tired]:.0%}); COACH overrides and starts him over {weakest.name}")
 
     print(f"\n== Previously on {OPPONENT}: {recall(OPPONENT) or 'nothing stored'}")
-    snaps = track_match(xi, hrv, seed)
+    snaps = track_match(xi, hrv, seed, bounded=True)
     events = generate_match(seed, CLUB, OPPONENT, home_players=[p.name for p in xi])
     shown = set()
     for minute in range(50, 95, 5):

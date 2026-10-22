@@ -40,6 +40,21 @@ def _fit(formation: str, o: Opponent) -> tuple[float, list[str]]:
     return round(fit, 3), why
 
 
+def why_switch(current: str, new: str, o: Opponent) -> list[str]:
+    """Why `new` fits this opponent better than `current`: one reason per fit term that improves, with the same numbers as _fit."""
+    dc, mc, fc = FORMATIONS[current]
+    dn, mn, fn = FORMATIONS[new]
+    out = []
+    if o.press >= HIGH and mn > mc:
+        out.append(f"{mn} midfielders give passing triangles against their hard press ({o.press:.0%})")
+    if o.press <= LOW and fn > fc:
+        out.append(f"it is safe to commit {fn} forwards because they press little ({o.press:.0%})")
+    threat = (o.aerial + o.set_piece_threat) / 2
+    if threat >= HIGH and dn > dc:
+        out.append(f"{dn} defenders help against their aerial and set-piece threat ({threat:.0%})")
+    return out or ["it scores higher on tactical fit against their profile"]
+
+
 def _movements(formation: str, o: Opponent) -> dict[str, str]:
     d, m, f = FORMATIONS[formation]
     high_press, threat = o.press >= HIGH, (o.aerial + o.set_piece_threat) / 2 >= HIGH
