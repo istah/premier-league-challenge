@@ -20,6 +20,10 @@ elif cmd == "bench":  # uv run python -m plc bench
     from .bench import run
 
     print(json.dumps(run(), indent=2))
+elif cmd == "publish":  # uv run --extra foundry python -m plc publish: create the staff as Foundry Agent Service agents
+    from .foundry_agents import publish
+
+    print("\n".join(publish()))
 elif cmd == "evaluate":  # uv run --extra eval python -m plc evaluate [n]: Foundry Groundedness on live notes, clean vs corrupted
     from .evaluate import report
 

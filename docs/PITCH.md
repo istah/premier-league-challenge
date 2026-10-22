@@ -16,7 +16,7 @@ We are explicit about limits. Our offline benchmark scores are tautological: not
 
 | Runs today (offline, `uv run python -m plc demo`, tests pass) | Designed, not run live |
 |---|---|
-| Synthetic match engine (seeded, deterministic) | Foundry-hosted model serving the staff agents: runs live (Oct 22, one Foundry project, `gpt-6-astra`): the Tactician and Own-Style Analyst run concurrently through Agent Framework, a Fact-checker agent screens them, the rules judge and an LLM rubric judge score them. Hosting the agents in Foundry Agent Service is not done |
+| Synthetic match engine (seeded, deterministic) | Foundry-hosted model serving the staff agents: runs live (Oct 22, one Foundry project, `gpt-6-astra`): the Tactician and Own-Style Analyst run concurrently through Agent Framework, a Fact-checker agent screens them, the rules judge and an LLM rubric judge score them. The four staff agents are also published as named agents in Foundry Agent Service (`python -m plc publish`) and called by reference (`FOUNDRY_HOSTED_AGENTS=1`), verified once on Oct 22 |
 | Event bus (in-memory log, `GET /events`) | Decision-1 on Foundry (no deployment available yet; offline heuristic runs instead) |
 | Activator rules as plain data | Azure Event Hubs (code path unverified against a namespace) |
 | Orchestrator with a routing table | Fabric Eventstream, Eventhouse (KQL bronze/silver/gold), Activator |

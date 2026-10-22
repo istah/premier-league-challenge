@@ -81,7 +81,11 @@ def run(m: Match, route: str = "full", live: bool = False) -> dict:
     if live and live_available():
         try:
             actions = {n["agent"]: n.get("actions") for n in notes}  # rules propose the buttons; the agents write the words
-            live = asyncio.run_coroutine_threadsafe(agent_briefing(facts, agents, FOCUS.get(route, "")), _loop()).result()
+            if os.environ.get("FOUNDRY_HOSTED_AGENTS"):  # the agents live in Foundry Agent Service (`python -m plc publish`)
+                from .foundry_agents import briefing
+                live = briefing(facts, agents, FOCUS.get(route, ""))
+            else:
+                live = asyncio.run_coroutine_threadsafe(agent_briefing(facts, agents, FOCUS.get(route, "")), _loop()).result()
             notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")

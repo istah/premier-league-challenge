@@ -12,7 +12,7 @@ A coach-facing decision-support system for a fictional club (Redmoor FC). A seed
 ## What runs today, and what does not
 | Runs offline now | Designed, not yet run live |
 |---|---|
-| Match engine (formations, role chains, team instruction sliders, per-player orders, wellness and HRV readiness) | Foundry Agent Service hosting (agents run live on a Foundry model since Oct 22, but are not hosted as Foundry agents) |
+| Match engine (formations, role chains, team instruction sliders, per-player orders, wellness and HRV readiness) | Fabric Eventstream/Eventhouse/Activator, Event Hubs (agents run live on Foundry and can be hosted in Foundry Agent Service: `python -m plc publish`, verified once Oct 22) |
 | Event bus, Activator rules, orchestrator, rules Judge with citations, benchmark, replay comparison. Live on Foundry (with `.env` set): concurrent staff agents, Fact-checker agent, LLM rubric judge | Microsoft-Decision-1 (probability field unverified; heuristic fallback in use) |
 | Coach interface with voice/dictation override | Event Hubs, Fabric Eventstream/Eventhouse/Activator, LLM judge, Foundry evaluators |
 

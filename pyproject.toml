@@ -13,6 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+foundry = ["azure-ai-projects"]  # hosted agents in Foundry Agent Service (`python -m plc publish`)
 eval = ["azure-ai-evaluation"]  # Foundry evaluators for `python -m plc evaluate`; not needed offline
 
 [dependency-groups]
