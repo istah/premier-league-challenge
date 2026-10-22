@@ -328,7 +328,14 @@ async function staff(route = 'full', why = 'You asked') {
   feed.unshift({minute: state.minute, why, route, r}); feed = feed.slice(0, 5);
   renderFeed(); callout(feed[0]);
   $('b-now').style.display = 'block';
+  if (r.live_available) upgrade(feed[0], route);
   return r.notes.some(n => n.actions?.length);
+}
+async function upgrade(item, route) {  // the instant rule-written notes are replaced by the model-written ones when they arrive, if the judge accepts them
+  const live = await fetch(`/match/${id}/briefing?route=${route}&live=true`).then(r => r.json()).catch(() => null);
+  if (!live || live.mode !== 'agents' || !live.judge.grounded || !feed.includes(item)) return;
+  item.r = live; item.why += ' · written by the AI staff';
+  renderFeed();
 }
 function act(a, answer = false) {
   if (a.type === 'plan') return send({mentality: a.value}, answer);

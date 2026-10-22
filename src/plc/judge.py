@@ -84,9 +84,9 @@ def llm_score(notes: list[dict], facts: dict, passes: int = 3) -> float | None:
         return None
 
 
-def judge(notes: list[dict], facts: dict) -> dict:
+def judge(notes: list[dict], facts: dict, llm: bool = False) -> dict:
     rows = [check(n, facts) for n in notes if n["agent"] != "Fact-checker"]
-    quality = llm_score(notes, facts) if rows else None
+    quality = llm_score(notes, facts) if rows and llm else None  # the model judge costs about 15 s, so only for live notes
     return {"grounded": all(not r["unsupported"] for r in rows), "score": round(sum(r["score"] for r in rows) / len(rows), 2) if rows else None,
             "unsupported": [f"{r['agent']}: {u}" for r in rows for u in r["unsupported"]], "notes": rows,
             "citations": [{"agent": r["agent"], **c} for r in rows for c in r["citations"]],

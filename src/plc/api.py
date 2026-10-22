@@ -5,6 +5,7 @@ from dataclasses import asdict
 
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
@@ -22,6 +23,7 @@ from .activator import Activator
 from .staff import gold_facts
 from .squad import Player
 
+load_dotenv()  # live Foundry notes are available when .env is filled; everything works offline without it
 app = FastAPI(title="Redmoor FC Coach Room")
 INDEX = Path(__file__).parent / "static" / "index.html"
 SESSIONS: dict[str, tuple[Match, list[Player]]] = {}
@@ -222,11 +224,12 @@ def substitution_status(m: Match) -> dict:
 
 
 @app.get("/match/{mid}/briefing")
-def staff_briefing(mid: str, route: str = "full"):
+def staff_briefing(mid: str, route: str = "full", live: bool = False):
     m = _get(mid)[0]
     if route not in orchestrator.ROUTES:
         raise ApiError(422, "invalid_route", f"route: unknown route '{route}'; expected one of {', '.join(orchestrator.ROUTES)}", routes=list(orchestrator.ROUTES))
-    out = orchestrator.run(m, route)
+    out = orchestrator.run(m, route, live)
+    out["live_available"] = orchestrator.live_available()
     if m.finished:  # after the final whistle the staff may talk, but there is nothing left to do
         for n in out["notes"]:
             n.pop("actions", None)

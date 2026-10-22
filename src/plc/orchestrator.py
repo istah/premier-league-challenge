@@ -55,16 +55,21 @@ def _without_repeats(m: Match, route: str, notes: list[dict]) -> list[dict]:
     return kept
 
 
-def run(m: Match, route: str = "full") -> dict:
+def live_available() -> bool:
+    return bool(os.environ.get("FOUNDRY_PROJECT_ENDPOINT") and os.environ.get("FOUNDRY_MODEL"))
+
+
+def run(m: Match, route: str = "full", live: bool = False) -> dict:
+    """Offline notes by default (instant). live=True has the Foundry agents write the words, which takes about 30 s."""
     facts, agents = gold_facts(m), ROUTES.get(route, ROUTES["full"])
     if not facts["ready"]:
         return {"route": route, "agents": agents, "mode": "offline", "notes": [], "judge": judge([], facts), "facts": facts}
     notes, mode = _without_repeats(m, route, offline_briefing(facts, route)), "offline"
-    if os.environ.get("FOUNDRY_PROJECT_ENDPOINT") and os.environ.get("FOUNDRY_MODEL"):
+    if live and live_available():
         try:
             actions = {n["agent"]: n.get("actions") for n in notes}  # rules propose the buttons; the agents write the words
             live = asyncio.run(agent_briefing(facts, agents, FOCUS.get(route, "")))
             notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")
-    return {"route": route, "agents": agents, "mode": mode, "notes": notes, "judge": judge(notes, facts), "facts": facts}
+    return {"route": route, "agents": agents, "mode": mode, "notes": notes, "judge": judge(notes, facts, mode == "agents"), "facts": facts}

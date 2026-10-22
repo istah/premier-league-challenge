@@ -50,3 +50,14 @@ def test_every_slider_explains_itself_with_current_numbers():
     low = c.post(f"/match/{mid}/decision", json={"instructions": {"press": 20}}).json()["explain"]["press"]["now"]
     high = c.post(f"/match/{mid}/decision", json={"instructions": {"press": 90}}).json()["explain"]["press"]["now"]
     assert low != high and "fade from" in high
+
+
+def test_briefing_is_offline_and_instant_unless_live_is_asked(monkeypatch):
+    monkeypatch.delenv("FOUNDRY_PROJECT_ENDPOINT", raising=False)
+    c = TestClient(app)
+    mid = c.post("/match").json()["id"]
+    for _ in range(13):
+        c.post(f"/match/{mid}/tick")
+    r = c.get(f"/match/{mid}/briefing?route=fade").json()
+    assert r["mode"] == "offline" and r["live_available"] is False
+    assert c.get(f"/match/{mid}/briefing?route=fade&live=true").json()["mode"] == "offline"  # no Foundry configured: falls back

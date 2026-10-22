@@ -37,7 +37,7 @@ def report(n: int = len(SCENARIOS)) -> dict:
         m, _ = new_match(seed)
         for _ in range(ticks):
             m.tick()
-        r = run(m, route)
+        r = run(m, route, live=True)
         if r["mode"] != "agents":
             continue
         for note in (x for x in r["notes"] if x["agent"] != "Fact-checker"):
