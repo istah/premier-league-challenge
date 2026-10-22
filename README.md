@@ -6,6 +6,9 @@ A coach-facing decision-support system for a fictional club (Redmoor FC). A seed
 
 **All data is synthetic** (fictional club, invented players, no real feeds, no logos). Real use of biometrics would need player consent.
 
+![Coach room at 65 minutes: the AI suggests Petrov off, Salah-Reyes on; staff notes are checked against the data; the coach decides](docs/img/coach-room-65min.png)
+*65' in the seed-7 scenario (synthetic data): a fading midfielder, the suggestion, the staff notes with their check mark, and a shape callout on the pitch. Nothing is applied until the coach accepts or dictates his own change.*
+
 ## What runs today, and what does not
 | Runs offline now | Designed, not yet run live |
 |---|---|
