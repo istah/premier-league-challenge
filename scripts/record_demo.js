@@ -1,0 +1,20 @@
+const { chromium } = require('playwright-core');
+(async () => {
+  const b = await chromium.launch({ channel: 'chrome' });
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 800 }, recordVideo: { dir: './demo-video', size: { width: 1440, height: 800 } } });
+  const p = await ctx.newPage();
+  await p.goto('http://localhost:8765/'); await p.selectOption('#speed', { index: 2 });
+  const waitPause = async (clock, ms = 40000) => { const t = Date.now(); while (Date.now() - t < ms) { const s = await p.evaluate(() => [document.getElementById('clock').textContent, document.getElementById('play').textContent]); if (s[1] === 'Resume' && (!clock || s[0] === clock)) return s; await p.waitForTimeout(400); } return null; };
+  await p.waitForTimeout(3000);
+  console.log('5', await waitPause("5'")); await p.waitForTimeout(5000);
+  const nn = await p.$('#callout button[data-co="x"]'); if (nn) await nn.click(); else await p.click('#play');
+  console.log('65', await waitPause("65'")); await p.waitForTimeout(6000);
+  await p.click('#fab'); await p.waitForTimeout(800); await p.fill('#vtext', 'take off Petrov, bring on Quinn'); await p.waitForTimeout(4500);
+  console.log('toast', await p.evaluate(() => document.getElementById('toast').textContent));
+  await p.waitForTimeout(3000);
+  await p.click('[data-tab="tactics"]'); await p.waitForTimeout(2500);
+  await p.check('#showov'); await p.waitForTimeout(3000);
+  await p.selectOption('#formation', { index: 2 }); await p.waitForTimeout(5000);
+  await p.click('[data-tab="log"]'); await p.waitForTimeout(3000);
+  await ctx.close(); await b.close();
+})();

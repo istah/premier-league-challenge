@@ -19,3 +19,6 @@ Re-run on Oct 22 after the playtest fixes (Chrome, 1440x800, seed 7; pauses at 5
 - Do not claim Foundry agents, Fabric or the LLM judge ran live unless the lead has flipped the TODO in `docs/PITCH.md`. Offline is the honest default.
 - Keep total under 2:00; trim the pre-match shot first.
 - No club crests, no real names, no wearable brand names.
+
+## Draft capture
+`scripts/record_demo.js` drives the real UI in Chrome and records a silent screen capture of the flow above (5' callout, 65' suggestion, dictated override "take off Petrov, bring on Quinn", tactics overlay, formation change, log). A first run on Oct 22 worked, including the override toast. Record the voiceover over it, or re-record the screen yourself; trim to under 2:00.
