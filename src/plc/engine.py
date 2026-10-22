@@ -27,6 +27,9 @@ PRESETS = {"defend": _plan(35, 30, 50, 40, 50, 50, 40), "balanced": _plan(50, 50
            "wings": _plan(50, 55, 85, 55, 50, 85, 80), "inside": _plan(50, 55, 35, 50, 40, 15, 60)}
 
 
+LOAD_COST = 0.03  # chance lost per unit of accumulated load; calibrated so the best press is not the maximum (see issue 19)
+
+
 def probability(x: float) -> float:
     """A chance per tick must stay a probability whatever the sliders and ratings are."""
     return max(0.0, min(1.0, x))
@@ -96,6 +99,7 @@ class Match:
     orders: dict = field(default_factory=dict)  # coach's individual instructions: name -> {depth, width}, in pitch % (+ higher / wider)
     last_frame: dict = field(default_factory=dict)
     rules: SubRules = field(default_factory=SubRules)
+    load: float = 0.0  # accumulated intensity above neutral (press, tempo); recovers when the team eases off
     sub_log: list[dict] = field(default_factory=list)  # {minute, off, on, half_time} for every substitution after kick-off
     advice_log: dict = field(default_factory=dict)  # (type, value) -> (minute, state) of staff advice already shown, so it is not repeated
 
@@ -218,6 +222,9 @@ class Match:
         counter = max(0, (i["direct"] - 50) / 50) * max(0, (50 - shapes["us"].possession) / 50) * 0.8  # direct sides profit when they cede the ball
         mine = (1 + counter) * (1 + 0.002 * (i["cross"] - 50)) * (1 + 0.004 * (i["press"] - 50) + 0.003 * (i["tempo"] - 50) + 0.002 * (i["line"] - 50))
         theirs = 1 + 0.004 * (i["line"] - 50) - 0.003 * (i["press"] - 50)  # a high line is exposed; a hard press disrupts them
+        self.load = max(0.0, self.load + (0.6 * (i["press"] - 50) + 0.4 * (i["tempo"] - 50)) / 50)
+        cost = min(0.4, LOAD_COST * self.load)  # hard running now is paid for later: the same sliders that raise chances wear the team down
+        mine, theirs = mine * (1 - cost), theirs * (1 + cost / 2)
         ov = self.overloads()
         outnumbered = max(0, ov["central"][1] - ov["central"][0]) + sum(max(0, ov[z][1] - ov[z][0]) for z in ("top", "bottom")) * 0.5
         mine, theirs = mine * (1 - 0.02 * outnumbered), theirs * (1 + 0.03 * outnumbered)  # being outnumbered costs chances; orders move players, which changes the count

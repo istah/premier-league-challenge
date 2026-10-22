@@ -121,3 +121,15 @@ def test_individual_orders_move_the_player_and_change_the_overload_count():
     assert ordered.last_frame[name][0] < plain.last_frame[name][0] and "coach order" in ordered.tick().roles[name]
     ordered.set_order(name, depth=0, width=0)
     assert name not in ordered.orders
+
+
+def test_intensity_has_a_cost_that_recovers():
+    m, _ = new_match(3)
+    m.set_instructions(press=100, tempo=100)
+    for _ in range(8):
+        m.tick()
+    hot = m.load
+    m.set_instructions(press=0, tempo=0)
+    for _ in range(8):
+        m.tick()
+    assert hot > 3 and m.load < hot
