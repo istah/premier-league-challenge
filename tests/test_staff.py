@@ -88,3 +88,23 @@ def test_judge_citations_and_calibration(tmp_path):
     r = calibration({"a": (note, facts), "b": (ok, facts)}, path)
     assert r["accuracy"] == 1.0 and r["tp"] == 1 and r["tn"] == 1
     assert calibration({}, tmp_path / "none.csv") is None
+
+
+def test_fact_checker_flag_blocks_a_live_note(monkeypatch):
+    from plc import orchestrator
+    from plc.engine import new_match
+
+    m, _ = new_match(7)
+    for _ in range(13):
+        m.tick()
+    monkeypatch.setenv("FOUNDRY_PROJECT_ENDPOINT", "x")
+    monkeypatch.setenv("FOUNDRY_MODEL", "x")
+    live = [{"agent": "Formation Tactician", "claim": "Change shape.", "source": "agent"}, {"agent": "Fact-checker", "claim": "Check: invented movement", "source": "facts"}]
+    monkeypatch.setattr(orchestrator, "agent_briefing", lambda *a: _coro(live))
+    monkeypatch.setattr(orchestrator, "judge", lambda notes, facts, llm=False: {"grounded": True, "unsupported": [], "score": 1.0})
+    r = orchestrator.run(m, "fade", live=True)
+    assert r["mode"] == "agents" and r["judge"]["grounded"] is False and "invented movement" in r["judge"]["unsupported"][0]
+
+
+async def _coro(x):
+    return x

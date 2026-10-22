@@ -89,4 +89,8 @@ def run(m: Match, route: str = "full", live: bool = False) -> dict:
             notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")
-    return {"route": route, "agents": agents, "mode": mode, "notes": notes, "judge": judge(notes, facts, mode == "agents"), "facts": facts}
+    verdict = judge(notes, facts, mode == "agents")
+    flagged = [n["claim"] for n in notes if n["agent"] == "Fact-checker" and n["claim"].startswith("Check:")]
+    if flagged:  # the Fact-checker agent and the rules judge are separate checks: either one can stop a live note reaching the coach
+        verdict = {**verdict, "grounded": False, "unsupported": verdict["unsupported"] + [f"Fact-checker: {f[6:]}" for f in flagged]}
+    return {"route": route, "agents": agents, "mode": mode, "notes": notes, "judge": verdict, "facts": facts}
