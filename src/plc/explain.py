@@ -1,7 +1,7 @@
 """Plain-language meaning of each instruction slider, with the numbers it currently produces (same formulas as engine.py)."""
 
 DOES = {
-    "press": "How early and hard we hunt the ball. Higher: we win it further up the pitch (shaded zone) and allow fewer passes per defensive action, but players tire sooner.",
+    "press": "How early and hard we hunt the ball. Higher: we win it further up the pitch (shaded zone) and allow fewer passes per defensive action, but players tire sooner and the whole team loses sharpness the longer you keep it high (it recovers when you ease off).",
     "line": "How high our back line stands. Higher: squeezes their space and keeps play near their goal, but a ball over the top finds space behind.",
     "width": "How far apart our players stand. Wider: stretches their block and frees overlapping runs. Narrower: compact centre, harder to play through.",
     "tempo": "How fast we play and move. Higher: more chances, more energy spent.",
