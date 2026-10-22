@@ -1,3 +1,5 @@
+// Draft screen capture of the coach room for the demo video (no voiceover).
+// Needs: npm i playwright-core; npx playwright-core install ffmpeg; Chrome installed; server running: uv run uvicorn plc.api:app --port 8765
 const { chromium } = require('playwright-core');
 (async () => {
   const b = await chromium.launch({ channel: 'chrome' });
