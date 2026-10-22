@@ -20,6 +20,10 @@ elif cmd == "bench":  # uv run python -m plc bench
     from .bench import run
 
     print(json.dumps(run(), indent=2))
+elif cmd == "evaluate":  # uv run --extra eval python -m plc evaluate [n]: Foundry Groundedness on live notes, clean vs corrupted
+    from .evaluate import report
+
+    print(json.dumps(report(int(sys.argv[2]) if len(sys.argv) > 2 else 6), indent=2))
 elif cmd == "replay":  # uv run python -m plc replay [seeds=50]: none vs accept-all-AI vs scripted coach
     from .replay import report
 

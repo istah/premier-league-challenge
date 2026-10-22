@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn",
 ]
 
+[project.optional-dependencies]
+eval = ["azure-ai-evaluation"]  # Foundry evaluators for `python -m plc evaluate`; not needed offline
+
 [dependency-groups]
 dev = ["pytest", "httpx"]
 

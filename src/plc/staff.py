@@ -152,7 +152,7 @@ def offline_briefing(f: dict, route: str = "full") -> list[dict]:
 
 
 INSTRUCTIONS = {
-    "Opponent Analyst": "Describe the opponent's formation, block height, pressing and passing style, and any shift in the last 20 minutes.",
+    "Opponent Analyst": "Describe the opponent's formation, block height, pressing and passing style, and any recent shift.",
     "Own-Style Analyst": "Describe how our team is playing (block, possession, passing, width) and what that exposes against this opponent.",
     "Formation Tactician": "Judge our formation against the opponent's style and give concrete movements per line. Recommend keeping or changing shape.",
 }
@@ -170,8 +170,12 @@ async def agent_briefing(f: dict, agents: list[str] | None = None, focus: str = 
     client = FoundryChatClient(project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], model=os.environ["FOUNDRY_MODEL"], credential=AzureCliCredential())
     facts, names = json.dumps({**f, "focus": focus} if focus else f), {n.replace(" ", ""): n for n in (agents or INSTRUCTIONS)}
     team = [client.as_agent(name=n.replace(" ", ""), instructions=INSTRUCTIONS[n] + RULES) for n in names.values()]
-    events = await ConcurrentBuilder(participants=team).build().run(facts)
-    notes = [{"agent": names[m.author_name], "claim": m.text.strip(), "source": "agent"} for r in events.get_outputs() for m in r.messages if m.author_name in names and m.text]
+    if len(team) == 1:  # the concurrent fan-out needs two or more participants
+        replies = [(team[0].name, (await team[0].run(facts)).text)]
+    else:
+        events = await ConcurrentBuilder(participants=team).build().run(facts)
+        replies = [(m.author_name, m.text) for r in events.get_outputs() for m in r.messages]
+    notes = [{"agent": names[who], "claim": text.strip(), "source": "agent"} for who, text in replies if who in names and text]
     checker = client.as_agent(name="FactChecker", instructions="Compare each note with the JSON facts. Reply with ONLY a JSON list of the notes' sentences that are NOT supported, [] if all are." + RULES)
     verdict = str((await checker.run(json.dumps({"facts": f, "notes": notes}))).text).strip().strip("`").removeprefix("json").strip()
     try:
