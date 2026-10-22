@@ -21,6 +21,13 @@ ROUTES = {
     "full": list(INSTRUCTIONS),
 }
 
+FOCUS = {"fade": "A player is fading (see alerts): say who, the numbers against his own baseline, and whether to replace him.",
+         "opponent": "The opponent changed shape (see their_shifts): say what changed and what we should do about it.",
+         "goal": "A goal was scored (see last_goal and score): say what it changes and what to do next.",
+         "readiness": "Readiness concerns (see readiness_concerns): say who and why, with the numbers.",
+         "shape": "Shape problems (see shape_issues): say which player should adjust and how.",
+         "losing": "We are behind late: what should change.", "leading": "We are ahead late: how to protect it."}
+
 
 REPEAT_MINUTES = 20  # the same plan or formation advice is not shown again within this time unless the situation changes
 
@@ -55,7 +62,9 @@ def run(m: Match, route: str = "full") -> dict:
     notes, mode = _without_repeats(m, route, offline_briefing(facts, route)), "offline"
     if os.environ.get("FOUNDRY_PROJECT_ENDPOINT") and os.environ.get("FOUNDRY_MODEL"):
         try:
-            notes, mode = [n for n in asyncio.run(agent_briefing(facts)) if n["agent"] in agents or n["agent"] == "Fact-checker"], "agents"
+            actions = {n["agent"]: n.get("actions") for n in notes}  # rules propose the buttons; the agents write the words
+            live = asyncio.run(agent_briefing(facts, agents, FOCUS.get(route, "")))
+            notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")
     return {"route": route, "agents": agents, "mode": mode, "notes": notes, "judge": judge(notes, facts), "facts": facts}

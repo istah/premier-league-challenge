@@ -16,7 +16,8 @@ RUBRIC = ["Every statement is supported by the facts.", "The note says what the 
 
 
 def _numbers(text: str) -> set[str]:
-    return {n.rstrip("0").rstrip(".") if "." in n else n for n in re.findall(r"\d+(?:\.\d+)?", text)}
+    out = {n.rstrip("0").rstrip(".") if "." in n else n for n in re.findall(r"\d+(?:\.\d+)?", text)}
+    return out | {f"{float(n) * 100:g}" for n in out if n.startswith("0.")}  # 0.85 may be quoted as 85%
 
 
 def _leaves(node, path="gold_facts"):

@@ -156,20 +156,26 @@ INSTRUCTIONS = {
     "Own-Style Analyst": "Describe how our team is playing (block, possession, passing, width) and what that exposes against this opponent.",
     "Formation Tactician": "Judge our formation against the opponent's style and give concrete movements per line. Recommend keeping or changing shape.",
 }
-RULES = " Use ONLY the JSON facts you are given and quote their numbers. If a fact is missing, say so. Max 3 sentences."
+RULES = " Use ONLY the JSON facts you are given and quote their numbers. If a fact is missing, say so. Max 3 sentences. If the facts hold a \"focus\", answer that first."
 
 
-async def agent_briefing(f: dict) -> list[dict]:
-    """Foundry path. UNVERIFIED against a live endpoint: written from the Agent Framework docs, not yet run."""
+async def agent_briefing(f: dict, agents: list[str] | None = None, focus: str = "") -> list[dict]:
+    """Foundry path, run live once (gpt-6-astra on a Foundry project, Oct 22): the chosen analysts run concurrently and the
+    aggregated output carries one message per agent, keyed by author_name. Actions are not generated here: the orchestrator
+    attaches the rule-derived ones, so a model can explain but never invent a button."""
     from agent_framework.foundry import FoundryChatClient
     from agent_framework.orchestrations import ConcurrentBuilder
     from azure.identity import AzureCliCredential
 
     client = FoundryChatClient(project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], model=os.environ["FOUNDRY_MODEL"], credential=AzureCliCredential())
-    facts = json.dumps(f)
-    team = [client.as_agent(name=n.replace(" ", ""), instructions=i + RULES) for n, i in INSTRUCTIONS.items()]
+    facts, names = json.dumps({**f, "focus": focus} if focus else f), {n.replace(" ", ""): n for n in (agents or INSTRUCTIONS)}
+    team = [client.as_agent(name=n.replace(" ", ""), instructions=INSTRUCTIONS[n] + RULES) for n in names.values()]
     events = await ConcurrentBuilder(participants=team).build().run(facts)
-    notes = [{"agent": n, "claim": o.text if hasattr(o, "text") else str(o), "source": "agent"} for n, o in zip(INSTRUCTIONS, events.get_outputs())]
-    checker = client.as_agent(name="FactChecker", instructions="Compare each note with the JSON facts. Reply with a JSON list of the notes' sentences that are NOT supported, empty if all are." + RULES)
-    verdict = await checker.run(json.dumps({"facts": f, "notes": notes}))
-    return notes + [{"agent": "Fact-checker", "claim": str(verdict), "source": "facts"}]
+    notes = [{"agent": names[m.author_name], "claim": m.text.strip(), "source": "agent"} for r in events.get_outputs() for m in r.messages if m.author_name in names and m.text]
+    checker = client.as_agent(name="FactChecker", instructions="Compare each note with the JSON facts. Reply with ONLY a JSON list of the notes' sentences that are NOT supported, [] if all are." + RULES)
+    verdict = str((await checker.run(json.dumps({"facts": f, "notes": notes}))).text).strip().strip("`").removeprefix("json").strip()
+    try:
+        bad = json.loads(verdict)
+    except ValueError:
+        bad = [verdict]
+    return notes + [{"agent": "Fact-checker", "claim": "Every claim matches the facts." if not bad else "Check: " + "; ".join(map(str, bad)), "source": "facts"}]

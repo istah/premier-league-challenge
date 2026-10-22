@@ -16,15 +16,17 @@ We are explicit about limits. Our offline benchmark scores are tautological: not
 
 | Runs today (offline, `uv run python -m plc demo`, tests pass) | Designed, not run live |
 |---|---|
-| Synthetic match engine (seeded, deterministic) | Foundry agents (code path exists, never run against a live project) |
-| Event bus (in-memory log, `GET /events`) | Decision-1 on Foundry (offline heuristic runs instead) |
+| Synthetic match engine (seeded, deterministic) | Foundry-hosted model serving the staff agents: runs live (Oct 22, one Foundry project, `gpt-6-astra`): the Tactician and Own-Style Analyst run concurrently through Agent Framework, a Fact-checker agent screens them, the rules judge and an LLM rubric judge score them. Hosting the agents in Foundry Agent Service is not done |
+| Event bus (in-memory log, `GET /events`) | Decision-1 on Foundry (no deployment available yet; offline heuristic runs instead) |
 | Activator rules as plain data | Azure Event Hubs (code path unverified against a namespace) |
 | Orchestrator with a routing table | Fabric Eventstream, Eventhouse (KQL bronze/silver/gold), Activator |
-| Staff agents (offline notes from gold facts) | LLM rubric judge |
+| Staff agents (offline notes from gold facts; live notes on Foundry as above) | Decision-1 probability field unverified |
 | Rules judge (numeric and label grounding) | Foundry evaluators on `data/bench/eval.jsonl` |
 | Benchmark (`uv run python -m plc bench`) | Human calibration set for the judge |
 | Coach interface with voice and typed override | |
 
+> Verified live so far: agent run, concurrent orchestration, Fact-checker agent, LLM rubric judge. In the first live run the rules judge flagged a model that wrote "85%" for a fact stored as 0.85 (we now accept that form), which is the check doing its job. Not verified: Decision-1, Event Hubs, Fabric, Foundry evaluators.
+>
 > TODO (lead): flip rows in the right-hand column to "runs" only after each is verified live, and update this table, README and the video voiceover together. Until then the submission must say these are designed, not run.
 
 ## Longer section
