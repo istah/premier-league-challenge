@@ -61,3 +61,14 @@ def test_briefing_is_offline_and_instant_unless_live_is_asked(monkeypatch):
     r = c.get(f"/match/{mid}/briefing?route=fade").json()
     assert r["mode"] == "offline" and r["live_available"] is False
     assert c.get(f"/match/{mid}/briefing?route=fade&live=true").json()["mode"] == "offline"  # no Foundry configured: falls back
+
+
+def test_events_filter_shows_trigger_to_briefing_trace():
+    c = TestClient(app)
+    mid = c.post("/match").json()["id"]
+    for _ in range(13):
+        for t in c.post(f"/match/{mid}/tick").json()["triggers"]:
+            c.get(f"/match/{mid}/briefing?route={t['route']}")
+    ev = c.get(f"/events?match={mid}&kinds=trigger,briefing&limit=100").json()
+    assert {e["kind"] for e in ev} == {"trigger", "briefing"} and all(e["match"] == mid for e in ev)
+    assert all({"agents", "mode", "minute"} <= e["payload"].keys() for e in ev if e["kind"] == "briefing")

@@ -233,11 +233,13 @@ def staff_briefing(mid: str, route: str = "full", live: bool = False):
     if m.finished:  # after the final whistle the staff may talk, but there is nothing left to do
         for n in out["notes"]:
             n.pop("actions", None)
-    bus.publish("briefing", mid, {"route": route, "mode": out["mode"], "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
+    bus.publish("briefing", mid, {"route": route, "minute": m.minute, "agents": out["agents"], "mode": out["mode"], "unsupported": out["judge"]["unsupported"], "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
     return out
 
 
 @app.get("/events")
-def events(limit: int = Query(50, ge=0, le=500)):
-    return list(bus.LOG)[-limit:]
+def events(limit: int = Query(50, ge=0, le=500), match: str | None = None, kinds: str | None = None):
+    """The event bus log, newest last. `match` and `kinds` (comma separated) filter it."""
+    rows = [e for e in bus.LOG if (not match or e["match"] == match) and (not kinds or e["kind"] in kinds.split(","))]
+    return rows[-limit:]
 

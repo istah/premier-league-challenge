@@ -159,7 +159,7 @@
       <div class="card"><h2>Best-fit players</h2><div id="fit" style="font-size:13px"></div></div>
       <div class="card"><h2>Bench</h2><div class="bench" id="bench"></div></div>
     </div>
-    <div class="tab" id="tab-log" hidden><div class="card"><h2>Match log</h2><div id="log"></div></div></div>
+    <div class="tab" id="tab-log" hidden><div class="card"><h2>How the staff worked</h2><div class="mute" style="font-size:12px;margin-bottom:6px">Event bus → Activator rule → orchestrator → analysts → checks. Newest first.</div><div id="trace" style="font-size:13px"></div></div><div class="card"><h2>Match log</h2><div id="log"></div></div></div>
   </aside>
 </main>
 <script>
@@ -375,7 +375,15 @@ document.addEventListener('click', e => { if (!$('pop').contains(e.target)) $('p
 $('pcancel').onclick = () => $('pop').hidden = true;
 $('pgo').onclick = () => { const on = $('psub').value; if (!on || state.finished) return $('psub').focus(); $('pop').hidden = true; send({off: selected, on}); };
 
+async function trace() {
+  const ev = await fetch(`/events?limit=60&match=${id}&kinds=trigger,briefing`).then(r => r.json()).catch(() => []);
+  const rows = ev.reverse().map(e => e.kind === 'trigger'
+    ? `<div class="mute" style="margin-top:8px">⚡ Activator rule <b>${e.payload.rule}</b> fired → route <b>${e.payload.route}</b></div>`
+    : `<div style="margin-left:14px">${e.payload.minute}' · ${e.payload.agents.join(' + ')} · ${e.payload.mode === 'agents' ? 'AI-written' : 'rule-written'} · judge <b style="color:${e.payload.grounded ? 'var(--ok)' : 'var(--bad)'}">${e.payload.grounded ? '✓ grounded' : '⚠ ' + e.payload.unsupported.length + ' unsupported'}</b></div>`);
+  $('trace').innerHTML = rows.join('') || '<span class="mute">Nothing yet: the staff speak when something changes on the pitch.</span>';
+}
 function tab(name) {
+  if (name === 'log') trace();
   if (name === 'now') $('b-now').style.display = 'none';
   document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== 'tab-' + name);
   document.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === name); b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', b.dataset.tab === name); });
