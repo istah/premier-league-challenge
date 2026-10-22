@@ -21,6 +21,7 @@ Owner: lead developer with Claude. Merge freeze **Oct 24**, submit **Oct 26** (d
 | Oct 26 | Deploy to Azure Container Apps, make the repo public, submit by midday | |
 
 ## Azure checklist (do in order, stop at the first failure and fix it)
+Status Oct 22: steps 1-4, 6, 7 and the Groundedness part of 8 are done on the employer subscription (borrowed for testing; rotate to a personal one, issue #38). Step 5 is blocked: the work account cannot deploy Decision-1 (`deployments/write` denied), so it needs the personal subscription. Step 9 not started.
 1. `az login` (subscription with Foundry access). Check `az account show`.
 2. Foundry portal: create a project; deploy a chat model; deploy Microsoft-Decision-1 if available.
 3. `cp .env.example .env` and fill `FOUNDRY_PROJECT_ENDPOINT`, `FOUNDRY_MODEL`, `FOUNDRY_RESOURCE_ENDPOINT`, `DECISION_DEPLOYMENT`. Never commit `.env`.

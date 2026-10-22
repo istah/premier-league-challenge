@@ -50,3 +50,13 @@ From `reports/Football AI tools replication.md` (sources there; some are dated o
 
 ## Replay comparison
 `python -m plc replay [seeds]` plays the same seeded matches with no changes, with every AI staff action accepted, and with a scripted coach who overrides some of them. It prints paired differences with standard errors. The engine is synthetic and its effects are our own modelling choices, so this shows the pipeline behaves coherently, not that it wins real matches.
+
+## First live evaluation (Oct 22)
+`uv run --extra eval python -m plc evaluate` runs the staff agents live on Foundry (`gpt-6-astra`), then scores each note with the Foundry Groundedness evaluator, once as written and once with the first number changed (`n*1.9+7`). Result, 6 scenarios, 14 notes (raw rows in `data/bench/foundry_eval.json`, git-ignored):
+
+| | Clean notes | Corrupted notes |
+|---|---|---|
+| Foundry Groundedness, mean of 1 to 5 | 4.36 | 2.00 (all 14 scored lower than their clean version and below the pass mark of 3) |
+| Rules judge | 14 of 14 pass | 14 of 14 caught |
+
+What it taught us: the first run had the rules judge rejecting 3 of 14 clean notes because the Opponent Analyst's instruction contained "last 20 minutes" and the model repeated the 20. We removed the number from the instruction; the same judge then passed all 14. A model quoting 0.85 as "85%" was also flagged and is now accepted. Limits: 14 notes, one blunt corruption, and the writer and the evaluator are the same model family, which can favour its own text. The evaluator needs `is_reasoning_model=True` for this deployment. Run output prints harmless "Event loop is closed" traces from repeated `asyncio.run` calls.

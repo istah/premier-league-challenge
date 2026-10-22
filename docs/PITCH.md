@@ -25,7 +25,7 @@ We are explicit about limits. Our offline benchmark scores are tautological: not
 | Benchmark (`uv run python -m plc bench`) | Human calibration set for the judge |
 | Coach interface with voice and typed override | |
 
-> Verified live so far: agent run, concurrent orchestration, Fact-checker agent, LLM rubric judge. In the first live run the rules judge flagged a model that wrote "85%" for a fact stored as 0.85 (we now accept that form), which is the check doing its job. Not verified: Decision-1, Event Hubs, Fabric, Foundry evaluators.
+> Verified live so far: agent run, concurrent orchestration, Fact-checker agent, LLM rubric judge, and the Foundry Groundedness evaluator (4.36/5 on 14 clean live notes vs 2.00 on the same notes with one number changed; see `docs/ARCHITECTURE.md`). In the first live run the rules judge flagged a model that wrote "85%" for a fact stored as 0.85 (we now accept that form), which is the check doing its job. Not verified: Decision-1, Event Hubs, Fabric, Foundry evaluators.
 >
 > TODO (lead): flip rows in the right-hand column to "runs" only after each is verified live, and update this table, README and the video voiceover together. Until then the submission must say these are designed, not run.
 
