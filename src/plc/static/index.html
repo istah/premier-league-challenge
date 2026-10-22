@@ -204,7 +204,7 @@ function place() {
     el.className = `pl ${f.cls} ${dir}`; el.style.left = x + '%'; el.style.top = y + '%';
     el.setAttribute('role', 'button'); el.setAttribute('aria-label', `${p.name}, ${STATUS[f.cls]}${f.drop > 0.08 ? `, output down ${Math.round(f.drop * 100)}%` : ''}. Open sheet`); el.title = `${STATUS[f.cls]}${f.drop > 0.08 ? `: output ${Math.round(-f.drop * 100)}% vs first half` : ''}`;
     el.querySelector('.dot').innerHTML = initials(p.name) + (mv ? `<span class="badgemv">${dir === 'mvfwd' ? '↑' : '↓'}</span>` : '');
-    el.querySelector('.tag').innerHTML = `${p.name}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}${roles[p.name] && roles[p.name] !== 'holds shape' ? `<br><small style="color:#cbd5e1">${roles[p.name]}</small>` : ''}`;
+    el.querySelector('.tag').innerHTML = `${p.name}${f.cls !== 'ok' ? ` <small><b>${STATUS[f.cls]}</b></small>` : ''}${f.hr ? ` <small>${f.hr}</small>` : ''}${mv ? `<br><small>${mv.replace('->', ' → ')}</small>` : ''}${roles[p.name] && roles[p.name] !== 'holds shape' ? `<br><small style="color:#cbd5e1">${roles[p.name]}</small>` : ''}`;
   });
   document.querySelectorAll('.pl').forEach(el => { if (!state.xi.some(p => p.name === el.dataset.name)) el.remove(); });
   Object.entries(pos).filter(([n]) => n.includes('#')).forEach(([n, [x, y]]) => {

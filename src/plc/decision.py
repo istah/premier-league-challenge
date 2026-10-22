@@ -19,7 +19,7 @@ OPTIONS = {
 
 
 def _heuristic(drop_pct: float, hr_over_pct: float, hrv_ratio: float) -> float:
-    z = 6 * drop_pct + 3 * hr_over_pct + 2 * max(0, 0.9 - hrv_ratio) - 0.9
+    z = 6 * drop_pct + 3 * hr_over_pct + max(0, 0.9 - hrv_ratio) - 0.9  # a low morning HRV alone must not saturate the score: it is context, the drop is the evidence
     return round(max(0.0, min(1.0, 0.5 + z)), 2)
 
 
