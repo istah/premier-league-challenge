@@ -4,6 +4,7 @@ Routing is a table, not a model call, so it is predictable and testable. Foundry
 staff.agent_briefing; offline mode builds the same notes from the gold facts.
 """
 import asyncio
+import threading
 import os
 
 from .engine import Match
@@ -55,6 +56,18 @@ def _without_repeats(m: Match, route: str, notes: list[dict]) -> list[dict]:
     return kept
 
 
+_LOOP: asyncio.AbstractEventLoop | None = None
+
+
+def _loop() -> asyncio.AbstractEventLoop:
+    """One long-lived event loop for the model calls: asyncio.run per call closed the loop under the HTTP clients and printed 'Event loop is closed'."""
+    global _LOOP
+    if _LOOP is None:
+        _LOOP = asyncio.new_event_loop()
+        threading.Thread(target=_LOOP.run_forever, daemon=True).start()
+    return _LOOP
+
+
 def live_available() -> bool:
     return bool(os.environ.get("FOUNDRY_PROJECT_ENDPOINT") and os.environ.get("FOUNDRY_MODEL"))
 
@@ -68,7 +81,7 @@ def run(m: Match, route: str = "full", live: bool = False) -> dict:
     if live and live_available():
         try:
             actions = {n["agent"]: n.get("actions") for n in notes}  # rules propose the buttons; the agents write the words
-            live = asyncio.run(agent_briefing(facts, agents, FOCUS.get(route, "")))
+            live = asyncio.run_coroutine_threadsafe(agent_briefing(facts, agents, FOCUS.get(route, "")), _loop()).result()
             notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")
