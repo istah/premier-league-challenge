@@ -44,7 +44,7 @@ class IllegalSubstitution(ValueError):
 class SubRules:
     """Premier League regulation matches: five substitutes, made in at most three in-play windows, plus half-time, no re-entry.
     None disables a limit. Minute 0 is team selection, not a substitution.
-    Rule source: the five-substitute rule in three windows plus half-time, adopted by the Premier League for 2022-23 (see audit/04_stability_implementation.md)."""
+    Rule source: the five-substitute rule in three windows plus half-time, adopted by the Premier League for 2022-23."""
     max_subs: int | None = 5
     max_windows: int | None = 3
     halftime_minute: int = 45  # the engine has no pause: the state after the 45' tick is the interval (activator.py uses the same minute)
