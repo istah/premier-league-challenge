@@ -17,7 +17,7 @@ Re-run on Oct 22 after the playtest fixes (Chrome, 1440x800, seed 7; pauses at 5
 **Requirements from the rules:** under 2:00 (aim for 1:55); public YouTube or Vimeo link added on the project page; footage of the project running (the browser app, as here); no third-party trademarks (our UI has none; do not show a browser logo bar or other apps) and no copyrighted music (use none).
 
 ## Notes
-- Do not claim Foundry agents, Fabric or the LLM judge ran live unless the lead has flipped the TODO in `docs/PITCH.md`. Offline is the honest default.
+- Claim only what ran live (see the README table): Foundry agents, Agent Service, the evaluator and the LLM judge did; Decision-1, Event Hubs and Fabric did not.
 - Keep total under 2:00; trim the pre-match shot first.
 - No club crests, no real names, no wearable brand names.
 

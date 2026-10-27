@@ -17,8 +17,8 @@ match engine ──► bus.publish() ──► Azure Event Hubs ──► Fabric
 | Event bus | `bus.py` | Every tick, shot, trigger and briefing is published. In-memory log, readable at `GET /events`. Azure Event Hubs when `EVENTHUB_NAMESPACE` and `EVENTHUB_NAME` are set (**unverified against a live namespace**; install with `uv add azure-eventhub`). |
 | Activator | `activator.py` | Rules are plain data and fire on a state change, not on every matching event. Local stand-in for Fabric Activator. |
 | Orchestrator | `orchestrator.py` | Maps a trigger to the agents that should speak (`fade` → Tactician + Own-Style, `opponent` → Opponent Analyst + Tactician, ...), runs them, has the Judge score the result. Routing is a table, not a model call, so it is predictable and testable. |
-| Agents | `staff.py` | Offline notes built from gold facts, each with a source and optional one-tap coach actions. Foundry path (`agent_briefing`): three analysts via `ConcurrentBuilder`, then a Fact-checker. **Foundry path never run live.** |
-| Judge | `judge.py` | Rules gate: every number and style label must exist in the facts, the Tactician must decide. Optional LLM rubric judge (rubric order shuffled over 3 passes). **LLM path never run live.** |
+| Agents | `staff.py` | Offline notes built from gold facts, each with a source and optional one-tap coach actions. Live path (`staff_flow`, see 'Live staff pipeline' below): parallel analysts, critic and revise, Coach Briefing, Fact-checker. Run live on Foundry Oct 22 and Oct 27. |
+| Judge | `judge.py` | Rules gate: every number and style label must exist in the facts, the Tactician must decide. LLM rubric judge on live notes (rubric order shuffled over 3 passes), run live Oct 22. |
 | Benchmark | `bench.py`, `uv run python -m plc bench` | Team grounding rate; judge catch rate on corrupted notes; writes `data/bench/eval.jsonl` for Foundry evaluators. |
 
 ## Activator rules (create the same ones in Fabric)

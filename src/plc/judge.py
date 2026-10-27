@@ -2,7 +2,7 @@
 
 Layer 1 (always, deterministic, the gate): every number and every style label in a claim must exist in the facts, and the
 tactician must actually decide. Research on LLM judges says they drift and should be calibrated, so code decides pass/fail.
-Layer 2 (Foundry configured): an LLM rubric judge adds a quality score. UNVERIFIED against a live endpoint.
+Layer 2 (Foundry configured): an LLM rubric judge adds a quality score for live notes (run against a live Foundry model Oct 22).
 """
 import json
 import os
@@ -57,7 +57,7 @@ def check(note: dict, facts: dict) -> dict:
 
 
 def llm_score(notes: list[dict], facts: dict, passes: int = 3) -> float | None:
-    """Foundry judge, rubric order shuffled per pass to reduce ordering bias. UNVERIFIED: not yet run against a live model."""
+    """Foundry judge, rubric order shuffled per pass to reduce ordering bias. Run live Oct 22; not calibrated against human labels."""
     if not (os.environ.get("FOUNDRY_PROJECT_ENDPOINT") and os.environ.get("FOUNDRY_MODEL")):
         return None
     import asyncio
