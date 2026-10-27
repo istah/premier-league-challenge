@@ -6,14 +6,15 @@ Re-run on Oct 22 after the playtest fixes (Chrome, 1440x800, seed 7; pauses at 5
 
 | Time | Shot | On screen | Voiceover |
 |---|---|---|---|
-| 0:00-0:10 | Page load | Redmoor v Harbour Rovers, 0-0. Header: "Watch Petrov, HRV 62% of baseline". Press Play (speed Fast: 2 s per 5 minutes) | "Clubs use AI mostly before the match. We found no product that suggests substitutions during it. This is a simulation of what a live feed could support." |
-| 0:10-0:25 | Readiness callout (5', clock pauses, Resume button) | Callout: Petrov, HRV 62%, wellness poor. Staff notes also list Mbeki: "HRV looks fine (109%) but his own wellness check-in is poor; HRV alone would miss this". Click "Not now", then Resume | "Before kick-off the staff flag two risks: a tired midfielder, and a player whose heart-rate variability looks fine but who says he feels bad. The coach starts them anyway. That is his call." |
-| 0:25-0:40 | Play on | Pitch animates; the Staff notes feed fills, each note marked "checked against the data" | "The match streams events onto a bus. Rules fire only when something changes, and a judge checks each number against the data before the coach sees it." |
-| 0:40-1:00 | 65' substitution suggestion | Clock pauses. AI suggestion card (Now tab): "Petrov off, Salah-Reyes on: distance down 14% vs first half, HR up 5%, morning HRV 62% of baseline". A shape callout may sit on the pitch at the same time | "He fades against his own baseline. Accept, or keep him on: the coach decides." |
-| 1:00-1:15 | Coach override | Press V, type or say "take off Petrov, bring on Quinn" (any bench player other than the AI pick; check the Players tab). Toast confirms | "The coach disagrees and dictates his own change. A coach call always beats the AI, and nothing is applied unless he says so." |
-| 1:15-1:30 | 70' second fade | Suggestion: "Mbeki off, Larsen on: distance down 29%, HR up 1%, morning HRV 109% of baseline" | "Five minutes later the player the heart-rate number cleared is the one who fades. The wellness check-in saw it first." |
-| 1:30-1:45 | Formation change | Tactics tab: pick another formation; roles appear on the pitch; toggle "Show tactics on pitch" | "He changes formation. Every player's new role shows on the pitch." |
-| 1:45-2:00 | Close | Log tab, title card | "AI is decision support. The coach decides. Data is synthetic; real biometrics need player consent." |
+| 0:00-0:10 | Page load, Play at Fast | Redmoor v Harbour Rovers; header "Watch Petrov" | "A manager has minutes and many signals. This is a team of AI agents that joins them, on synthetic football data, and shows its working." |
+| 0:10-0:25 | 5' readiness callout (clock pauses) | Petrov, HRV 62%; staff notes also list Mbeki: HRV fine but wellness poor. Click Not now, Resume | "Before the whistle the staff flag two risks, including a player the heart-rate number clears but who says he feels bad." |
+| 0:25-0:45 | 65' suggestion | AI suggestion card: Petrov off, Salah-Reyes on, with the numbers. Staff notes with the green "checked against the data" mark | "At 65 minutes he fades against his own baseline. Analysts run in parallel on Microsoft Foundry through Agent Framework; a Fact-checker agent and a rules judge verify every number before the coach sees it." |
+| 0:45-1:05 | Coach override | Press V, dictate "take off Petrov, bring on Quinn"; toast confirms | "The coach disagrees and dictates his own change. A coach call always beats the AI, and nothing is applied automatically." |
+| 1:05-1:25 | Formation change | Tactics tab, switch formation, "Show tactics on pitch" | "He changes formation, and every player's new role shows on the pitch." |
+| 1:25-1:45 | Orchestration trace | Log tab, "How the staff worked": rule fired, agents run, judge verdict | "Every trigger is traceable: which rule fired, which agents ran, what the judge decided. Agents are published in Foundry Agent Service and scored with Foundry's Groundedness evaluator." |
+| 1:45-1:55 | Close | Title card: Redmoor FC Coach Room, synthetic data | "AI is decision support. The coach decides. Data is synthetic; real biometrics need player consent." |
+
+**Requirements from the rules:** under 2:00 (aim for 1:55); public YouTube or Vimeo link added on the project page; footage of the project running (the browser app, as here); no third-party trademarks (our UI has none; do not show a browser logo bar or other apps) and no copyrighted music (use none).
 
 ## Notes
 - Do not claim Foundry agents, Fabric or the LLM judge ran live unless the lead has flipped the TODO in `docs/PITCH.md`. Offline is the honest default.
