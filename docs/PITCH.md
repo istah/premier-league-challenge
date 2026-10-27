@@ -27,7 +27,7 @@ We are explicit about limits. Our offline benchmark scores are tautological: not
 
 > Verified live so far: agent run, concurrent orchestration, Fact-checker agent, LLM rubric judge, and the Foundry Groundedness evaluator (4.36/5 on 14 clean live notes vs 2.00 on the same notes with one number changed; see `docs/ARCHITECTURE.md`). In the first live run the rules judge flagged a model that wrote "85%" for a fact stored as 0.85 (we now accept that form), which is the check doing its job. Not verified: Decision-1, Event Hubs, Fabric, Foundry evaluators.
 >
-> TODO (lead): flip rows in the right-hand column to "runs" only after each is verified live, and update this table, README and the video voiceover together. Until then the submission must say these are designed, not run.
+> Flip a row to "runs" only after it is verified live. The submission text is `docs/SUBMISSION.md`.
 
 ## Longer section
 
@@ -55,8 +55,8 @@ From our research report (sources in `reports/Football AI tools replication.md`;
 - Every match claim an agent makes must be checkable against the data.
 
 ### Honest evaluation
-- The benchmark measures team grounding rate and judge catch rate on corrupted notes. Offline notes are generated from the facts, so grounding is tautological, and the catch rate is measured on corruptions we wrote ourselves. Real evidence needs the Foundry agents' output, which we have not collected.
+- The benchmark measures team grounding rate and judge catch rate on corrupted notes. Offline notes are generated from the facts, so grounding is tautological, and the catch rate is measured on corruptions we wrote ourselves. The first live evidence (14 Foundry-written notes, Groundedness 4.36 clean vs 2.00 corrupted) is in `docs/ARCHITECTURE.md`; it is small and uses one corruption.
 - LLM judges drift and must be validated against humans; that calibration is still to do.
 
 ### Next steps
-Run the agents on Foundry, land events through Event Hubs and Fabric, run Foundry evaluators, calibrate the judge with human raters, and test with coaches on real workflows (with consent and real data under proper agreements).
+Land events through Event Hubs and Fabric, extend the Foundry evaluators, calibrate the judge with human raters, and test with coaches on real workflows (with consent and real data under proper agreements).
