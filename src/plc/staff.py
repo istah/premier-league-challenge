@@ -156,7 +156,7 @@ INSTRUCTIONS = {
     "Own-Style Analyst": "Describe how our team is playing (block, possession, passing, width) and what that exposes against this opponent.",
     "Formation Tactician": "Judge our formation against the opponent's style. Recommend keeping or changing shape, and quote only movements that appear in the facts.",
 }
-RULES = " Use ONLY the JSON facts you are given and quote their numbers. If a fact is missing, say so. Max 3 sentences. If the facts hold a \"focus\", answer that first."
+RULES = " Use ONLY the JSON facts you are given and quote their numbers. If a fact is missing, say so. Plain text, no markdown. Max 3 sentences. If the facts hold a \"focus\", answer that first."
 
 
 CHECKER = "Compare each note with the JSON facts. Reply with ONLY a JSON list of the notes' sentences that are NOT supported, [] if all are."

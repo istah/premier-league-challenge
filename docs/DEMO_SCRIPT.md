@@ -23,3 +23,8 @@ Re-run on Oct 22 after the playtest fixes (Chrome, 1440x800, seed 7; pauses at 5
 
 ## Draft capture
 `scripts/record_demo.js` drives the real UI in Chrome and records a silent screen capture of the flow above (5' callout, 65' suggestion, dictated override "take off Petrov, bring on Quinn", tactics overlay, formation change, log). A first run on Oct 22 worked, including the override toast. Record the voiceover over it, or re-record the screen yourself; trim to under 2:00.
+
+## Captioned cut (used for the submission, Oct 27)
+No voiceover: captions are drawn on the page during recording by `scripts/record_demo.js` (title card, one caption per beat, closing card), with the live agents hosted in Foundry Agent Service. The script prints timestamps; cut the wait for the live notes, for example:
+`ffmpeg -i demo-video/<file>.webm -vf "select='not(between(t,49.5,71.7))',setpts=N/FRAME_RATE/TB" -c:v libx264 -pix_fmt yuv420p -an demo.mp4`
+Result: 1:25, no audio, no third-party marks.

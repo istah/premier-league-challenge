@@ -349,7 +349,7 @@ function renderFeed() {
     const j = f.r.judge;
     return `<div style="margin:0 0 12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--card2)">
       <div style="display:flex;justify-content:space-between;font-size:12px" class="mute"><span>${f.minute}' · ${f.why}</span><span title="${j.unsupported.join('; ') || 'Every number and style label was found in the match data'}" style="color:${j.grounded ? 'var(--ok)' : 'var(--bad)'}">${j.grounded ? '✓ checked against the data' : '⚠ ' + j.unsupported.length + ' unsupported'}</span></div>
-      ${f.r.notes.map((n, k) => `<div style="margin:8px 0" title="from: ${n.source}"><b>${n.agent}</b><br>${n.claim}${(n.actions || []).map((a, m) => `<button class="primary" style="margin:6px 6px 0 0;padding:4px 10px" data-feed="${i}.${k}.${m}">${a.label}</button>`).join('')}</div>`).join('')}</div>`;
+      ${f.r.notes.map((n, k) => `<div style="margin:8px 0" title="from: ${n.source}"><b>${n.agent}</b><br>${md(n.claim)}${(n.actions || []).map((a, m) => `<button class="primary" style="margin:6px 6px 0 0;padding:4px 10px" data-feed="${i}.${k}.${m}">${a.label}</button>`).join('')}</div>`).join('')}</div>`;
   }).join('') || 'Analysts report here as things happen on the pitch.';
   document.querySelectorAll('[data-feed]').forEach(b => b.onclick = () => { const [i, k, m] = b.dataset.feed.split('.'); act(feed[i].r.notes[k].actions[m], true); b.disabled = true; b.textContent += ' ✓'; });
   if (state && state.finished) document.querySelectorAll('[data-feed]').forEach(b => b.disabled = true);
@@ -375,6 +375,7 @@ document.addEventListener('click', e => { if (!$('pop').contains(e.target)) $('p
 $('pcancel').onclick = () => $('pop').hidden = true;
 $('pgo').onclick = () => { const on = $('psub').value; if (!on || state.finished) return $('psub').focus(); $('pop').hidden = true; send({off: selected, on}); };
 
+const md = t => String(t).replace(/</g, '&lt;').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');  // models sometimes answer in markdown
 async function trace() {
   const ev = await fetch(`/events?limit=60&match=${id}&kinds=trigger,briefing`).then(r => r.json()).catch(() => []);
   const rows = ev.reverse().map(e => e.kind === 'trigger'
@@ -481,7 +482,7 @@ function callout(item) {  // the staff speak on the pitch edge nearest the playe
   const who = n.actions?.[0]?.off || n.actions?.[0]?.player, p = who && pos[who], low = p && p[1] >= 50;
   const right = p ? p[0] < 50 : true;  // the corner farthest from the player he means
   el.style.transform = 'none'; el.style.left = right ? 'auto' : '2%'; el.style.right = right ? '2%' : 'auto'; el.style.top = low ? '2%' : 'auto'; el.style.bottom = low ? 'auto' : '2%';
-  el.innerHTML = `<div class="mute" style="font-size:11px;margin-bottom:4px">${item.minute}' · ${item.why}</div><b>${n.agent}</b> ${n.claim}<div>${(n.actions || []).map((a, i) => `<button class="primary" data-co="${i}">${a.label}</button>`).join('')}<button data-co="x">Not now</button></div>`;
+  el.innerHTML = `<div class="mute" style="font-size:11px;margin-bottom:4px">${item.minute}' · ${item.why}</div><b>${n.agent}</b> ${md(n.claim)}<div>${(n.actions || []).map((a, i) => `<button class="primary" data-co="${i}">${a.label}</button>`).join('')}<button data-co="x">Not now</button></div>`;
   el.hidden = false;
   el.querySelectorAll('[data-co]').forEach(b => b.onclick = () => { hideCallout(); if (b.dataset.co !== 'x') act(n.actions[b.dataset.co], true); else resume(); });
   clearTimeout(calloutT); calloutT = setTimeout(() => el.hidden = true, 15000);
