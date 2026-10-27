@@ -11,7 +11,7 @@ A seeded match engine streams events onto an event bus. Rule triggers (a local s
 ## Microsoft and Azure technologies used
 - **Microsoft Foundry:** a project with a deployed chat model serves all agent calls. The five staff agents (three analysts, Coach Briefing, Fact-checker) are published as named agents in **Foundry Agent Service** (`python -m plc publish`) and called by reference; the same pipeline also runs with in-process agents.
 - **Microsoft Agent Framework** (`agent-framework-foundry`, `agent-framework-orchestrations`): concurrent multi-agent orchestration for the staff, a sequential Analyst, Explainer and Personalizer workflow for fan and analyst audiences.
-- **Foundry evaluators (`azure-ai-evaluation`):** the Groundedness evaluator scored 14 live notes at 4.36 of 5 clean and 2.00 with one number changed (`python -m plc evaluate`).
+- **Foundry evaluators (`azure-ai-evaluation`):** the Groundedness evaluator scored 19 live notes from the full pipeline (Oct 27) at 4.16 of 5 as written and 2.00 with one number changed; every corrupted note fell below the pass mark (`python -m plc evaluate`). Our rules judge passed all 19 clean notes and caught all 19 corrupted ones.
 - **Azure Identity:** keyless `az login` credentials.
 - Prepared but not run live: Microsoft-Decision-1 (not deployed in our Foundry project; a heuristic fallback runs), Azure Event Hubs and Fabric Eventstream/Eventhouse/Activator (designed and mapped in `docs/ARCHITECTURE.md`), Azure Container Apps (`Dockerfile`, `docs/DEPLOY.md`; image built and run locally).
 
@@ -24,7 +24,7 @@ A seeded match engine streams events onto an event bus. Rule triggers (a local s
 
 ## Honest limits
 - All data is synthetic; biometrics are sensitive and real use needs player consent.
-- Offline benchmark numbers are tautological. The live evaluation is 14 notes, one blunt corruption, same model family for writer and evaluator.
+- Offline benchmark numbers are tautological. The live evaluation is 19 notes, one blunt corruption, same model family for writer and evaluator.
 - The replay comparison shows coherent behaviour of a synthetic engine, not that the system wins real matches.
 - Decision-1, Event Hubs, Fabric and a production deployment were not run live.
 

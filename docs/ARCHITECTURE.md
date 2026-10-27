@@ -68,3 +68,5 @@ What it taught us: the first run had the rules judge rejecting 3 of 14 clean not
 3. **Fan-in.** The Coach Briefing agent merges the notes into one call; it carries the route's rule-derived buttons, so they appear once.
 4. **Fact-checker.** It screens every note; a flag makes the briefing ungrounded.
 The API serves rule-written notes instantly; the UI asks for the live briefing in the background (about 45 s) and swaps it in only if the rules judge and the Fact-checker both pass. Verified live on Oct 27 with both backends and in the browser (Chrome, seed 7, 5' to 65'): flagged live briefings stayed out of the coach's view. In one run the Fact-checker blocked a back-five movement plan the Tactician had invented; we then changed its prompt to quote only movements present in the facts.
+
+Re-run of `python -m plc evaluate` on the full pipeline (Oct 27, 6 scenarios, 19 notes including Coach Briefing notes): Groundedness 4.16 clean vs 2.00 corrupted, all 19 corrupted notes below the pass mark of 3, 17 of 19 scored lower than their clean version (two clean notes already scored 2); rules judge 19 of 19 clean pass, 19 of 19 corrupted caught.
