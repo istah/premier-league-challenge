@@ -228,12 +228,13 @@ def staff_briefing(mid: str, route: str = "full", live: bool = False):
     m = _get(mid)[0]
     if route not in orchestrator.ROUTES:
         raise ApiError(422, "invalid_route", f"route: unknown route '{route}'; expected one of {', '.join(orchestrator.ROUTES)}", routes=list(orchestrator.ROUTES))
+    minute = m.minute  # a live briefing takes about 45 s and the match may move on meanwhile
     out = orchestrator.run(m, route, live)
     out["live_available"] = orchestrator.live_available()
     if m.finished:  # after the final whistle the staff may talk, but there is nothing left to do
         for n in out["notes"]:
             n.pop("actions", None)
-    bus.publish("briefing", mid, {"route": route, "minute": m.minute, "agents": out["agents"], "mode": out["mode"], "unsupported": out["judge"]["unsupported"], "revised": [n["agent"] for n in out["notes"] if n.get("revised")], "merged": any(n["agent"] == "Coach Briefing" for n in out["notes"]), "checker": next((n["claim"][:6] != "Check:" for n in out["notes"] if n["agent"] == "Fact-checker"), None), "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
+    bus.publish("briefing", mid, {"route": route, "minute": minute, "agents": out["agents"], "mode": out["mode"], "unsupported": out["judge"]["unsupported"], "revised": [n["agent"] for n in out["notes"] if n.get("revised")], "merged": any(n["agent"] == "Coach Briefing" for n in out["notes"]), "checker": next((n["claim"][:6] != "Check:" for n in out["notes"] if n["agent"] == "Fact-checker"), None), "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
     return out
 
 
