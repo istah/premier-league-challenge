@@ -48,3 +48,6 @@ Without those variables everything runs offline on rules and a heuristic.
 - `docs/ARCHITECTURE.md` event flow, medallion layers, Fabric and Foundry mapping, benchmarking. `docs/RESEARCH.md` prior art and tactics research.
 - `docs/DEPLOY.md` container and Azure Container Apps. `docs/PLAN_LEAD.md`, `docs/PLAN_EXPERIMENTS.md`, `docs/EXPERIMENTS.md` the two tracks.
 - `CLAUDE.md` project rules (synthetic data only, noreply commit email, coach always decides).
+
+## License
+MIT, see [`LICENSE`](LICENSE). All data in this repo is synthetic.
