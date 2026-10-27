@@ -60,3 +60,11 @@ From `reports/Football AI tools replication.md` (sources there; some are dated o
 | Rules judge | 14 of 14 pass | 14 of 14 caught |
 
 What it taught us: the first run had the rules judge rejecting 3 of 14 clean notes because the Opponent Analyst's instruction contained "last 20 minutes" and the model repeated the 20. We removed the number from the instruction; the same judge then passed all 14. A model quoting 0.85 as "85%" was also flagged and is now accepted. Limits: 14 notes, one blunt corruption, and the writer and the evaluator are the same model family, which can favour its own text. The evaluator needs `is_reasoning_model=True` for this deployment.
+
+## Live staff pipeline (Oct 27)
+`staff.staff_flow` is the same for both backends (in-process Agent Framework agents, or agents hosted in Foundry Agent Service):
+1. **Fan-out.** The analysts the route names run in parallel (`ConcurrentBuilder` in process; parallel calls by reference when hosted).
+2. **Critic and revise.** The rules judge checks each note; a flagged note goes back to its author once with the exact problems, and the rewrite is kept only if it passes.
+3. **Fan-in.** The Coach Briefing agent merges the notes into one call; it carries the route's rule-derived buttons, so they appear once.
+4. **Fact-checker.** It screens every note; a flag makes the briefing ungrounded.
+The API serves rule-written notes instantly; the UI asks for the live briefing in the background (about 45 s) and swaps it in only if the rules judge and the Fact-checker both pass. Verified live on Oct 27 with both backends and in the browser (Chrome, seed 7, 5' to 65'): flagged live briefings stayed out of the coach's view. In one run the Fact-checker blocked a back-five movement plan the Tactician had invented; we then changed its prompt to quote only movements present in the facts.
