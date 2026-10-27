@@ -108,3 +108,26 @@ def test_fact_checker_flag_blocks_a_live_note(monkeypatch):
 
 async def _coro(x):
     return x
+
+
+def test_staff_flow_revises_flagged_notes_then_merges_and_checks():
+    import asyncio
+
+    from plc.staff import staff_flow
+
+    facts = {"minute": 65, "alerts": [{"off": "Petrov", "drop_pct": 14}]}
+    asked = []
+
+    async def analysts(names, text):
+        return [("Formation Tactician", "Replace Petrov: distance down 40%."), ("Own-Style Analyst", "Petrov is down 14%.")]
+
+    async def ask(name, text):
+        asked.append(name)
+        return {"Formation Tactician": "Replace Petrov: distance down 14%.", "Coach Briefing": "Take Petrov off: down 14% at 65.",
+                "Fact-checker": "[]"}[name]
+
+    notes = asyncio.run(staff_flow(analysts, ask, facts, ["Formation Tactician", "Own-Style Analyst"]))
+    assert asked == ["Formation Tactician", "Coach Briefing", "Fact-checker"]  # only the flagged note is sent back
+    assert [n["agent"] for n in notes] == ["Coach Briefing", "Formation Tactician", "Own-Style Analyst", "Fact-checker"]
+    assert notes[1]["claim"].endswith("14%.") and notes[1]["revised"] == ["number 40 is not in the facts"]
+    assert notes[-1]["claim"] == "Every claim matches the facts."

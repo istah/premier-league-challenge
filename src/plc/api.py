@@ -233,7 +233,7 @@ def staff_briefing(mid: str, route: str = "full", live: bool = False):
     if m.finished:  # after the final whistle the staff may talk, but there is nothing left to do
         for n in out["notes"]:
             n.pop("actions", None)
-    bus.publish("briefing", mid, {"route": route, "minute": m.minute, "agents": out["agents"], "mode": out["mode"], "unsupported": out["judge"]["unsupported"], "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
+    bus.publish("briefing", mid, {"route": route, "minute": m.minute, "agents": out["agents"], "mode": out["mode"], "unsupported": out["judge"]["unsupported"], "revised": [n["agent"] for n in out["notes"] if n.get("revised")], "merged": any(n["agent"] == "Coach Briefing" for n in out["notes"]), "checker": next((n["claim"][:6] != "Check:" for n in out["notes"] if n["agent"] == "Fact-checker"), None), "grounded": out["judge"]["grounded"], "score": out["judge"]["score"]})
     return out
 
 

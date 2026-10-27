@@ -82,10 +82,12 @@ def run(m: Match, route: str = "full", live: bool = False) -> dict:
         try:
             actions = {n["agent"]: n.get("actions") for n in notes}  # rules propose the buttons; the agents write the words
             if os.environ.get("FOUNDRY_HOSTED_AGENTS"):  # the agents live in Foundry Agent Service (`python -m plc publish`)
-                from .foundry_agents import briefing
-                live = briefing(facts, agents, FOCUS.get(route, ""))
+                from .foundry_agents import briefing as hosted
+                live = asyncio.run_coroutine_threadsafe(hosted(facts, agents, FOCUS.get(route, "")), _loop()).result()
             else:
                 live = asyncio.run_coroutine_threadsafe(agent_briefing(facts, agents, FOCUS.get(route, "")), _loop()).result()
+            if any(n["agent"] == "Coach Briefing" for n in live):  # the merged recommendation carries the route's buttons, once
+                actions = {"Coach Briefing": [a for acts in actions.values() if acts for a in acts]}
             notes, mode = [{**n, "actions": actions[n["agent"]]} if actions.get(n["agent"]) else n for n in live], "agents"
         except Exception as e:  # never leave the coach without a briefing
             print(f"agent briefing failed ({e}), using offline briefing")

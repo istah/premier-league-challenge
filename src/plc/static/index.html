@@ -379,7 +379,7 @@ async function trace() {
   const ev = await fetch(`/events?limit=60&match=${id}&kinds=trigger,briefing`).then(r => r.json()).catch(() => []);
   const rows = ev.reverse().map(e => e.kind === 'trigger'
     ? `<div class="mute" style="margin-top:8px">⚡ Activator rule <b>${e.payload.rule}</b> fired → route <b>${e.payload.route}</b></div>`
-    : `<div style="margin-left:14px">${e.payload.minute}' · ${e.payload.agents.join(' + ')} · ${e.payload.mode === 'agents' ? 'AI-written' : 'rule-written'} · judge <b style="color:${e.payload.grounded ? 'var(--ok)' : 'var(--bad)'}">${e.payload.grounded ? '✓ grounded' : '⚠ ' + e.payload.unsupported.length + ' unsupported'}</b></div>`);
+    : `<div style="margin-left:14px">${e.payload.minute}' · ${e.payload.agents.join(' ∥ ')} · ${e.payload.mode === 'agents' ? 'AI-written' + (e.payload.revised?.length ? ` → revised ${e.payload.revised.join(', ')}` : '') + (e.payload.merged ? ' → Coach Briefing' : '') + (e.payload.checker === null ? '' : ` → Fact-checker ${e.payload.checker ? '✓' : '⚠'}`) : 'rule-written'} · judge <b style="color:${e.payload.grounded ? 'var(--ok)' : 'var(--bad)'}">${e.payload.grounded ? '✓ grounded' : '⚠ ' + e.payload.unsupported.length + ' unsupported'}</b></div>`);
   $('trace').innerHTML = rows.join('') || '<span class="mute">Nothing yet: the staff speak when something changes on the pitch.</span>';
 }
 function tab(name) {

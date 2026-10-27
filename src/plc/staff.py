@@ -154,32 +154,65 @@ def offline_briefing(f: dict, route: str = "full") -> list[dict]:
 INSTRUCTIONS = {
     "Opponent Analyst": "Describe the opponent's formation, block height, pressing and passing style, and any recent shift.",
     "Own-Style Analyst": "Describe how our team is playing (block, possession, passing, width) and what that exposes against this opponent.",
-    "Formation Tactician": "Judge our formation against the opponent's style and give concrete movements per line. Recommend keeping or changing shape.",
+    "Formation Tactician": "Judge our formation against the opponent's style. Recommend keeping or changing shape, and quote only movements that appear in the facts.",
 }
 RULES = " Use ONLY the JSON facts you are given and quote their numbers. If a fact is missing, say so. Max 3 sentences. If the facts hold a \"focus\", answer that first."
 
 
-async def agent_briefing(f: dict, agents: list[str] | None = None, focus: str = "") -> list[dict]:
-    """Foundry path, run live once (gpt-6-astra on a Foundry project, Oct 22): the chosen analysts run concurrently and the
-    aggregated output carries one message per agent, keyed by author_name. Actions are not generated here: the orchestrator
-    attaches the rule-derived ones, so a model can explain but never invent a button."""
-    from agent_framework.foundry import FoundryChatClient
-    from agent_framework.orchestrations import ConcurrentBuilder
-    from azure.identity import AzureCliCredential
+CHECKER = "Compare each note with the JSON facts. Reply with ONLY a JSON list of the notes' sentences that are NOT supported, [] if all are."
+COACH = "You are the Coach Briefing agent. Merge the analysts' notes into one recommendation for the coach: the decision first, then the single reason that matters most, quoting the facts' numbers. Add nothing that is not in the facts."
+REVISE = "A checker found problems in your note. Rewrite it fixing only these problems, using only the facts. Reply with the new note only."
 
-    client = FoundryChatClient(project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], model=os.environ["FOUNDRY_MODEL"], credential=AzureCliCredential())
-    facts, names = json.dumps({**f, "focus": focus} if focus else f), {n.replace(" ", ""): n for n in (agents or INSTRUCTIONS)}
-    team = [client.as_agent(name=n.replace(" ", ""), instructions=INSTRUCTIONS[n] + RULES) for n in names.values()]
-    if len(team) == 1:  # the concurrent fan-out needs two or more participants
-        replies = [(team[0].name, (await team[0].run(facts)).text)]
-    else:
-        events = await ConcurrentBuilder(participants=team).build().run(facts)
-        replies = [(m.author_name, m.text) for r in events.get_outputs() for m in r.messages]
-    notes = [{"agent": names[who], "claim": text.strip(), "source": "agent"} for who, text in replies if who in names and text]
-    checker = client.as_agent(name="FactChecker", instructions="Compare each note with the JSON facts. Reply with ONLY a JSON list of the notes' sentences that are NOT supported, [] if all are." + RULES)
-    verdict = str((await checker.run(json.dumps({"facts": f, "notes": notes}))).text).strip().strip("`").removeprefix("json").strip()
+
+async def staff_flow(analysts, ask, f: dict, agents: list[str], focus: str = "") -> list[dict]:
+    """The live staff pipeline, the same for every backend:
+    1. analysts in parallel (fan-out), 2. critic and revise: a note the rules judge flags goes back to its author once with the
+    exact problems, 3. Coach Briefing merges the notes (fan-in), 4. the Fact-checker agent screens everything.
+    `analysts(agents, text)` returns [(agent, text)]; `ask(agent, text)` asks one named agent. Actions are never generated here."""
+    from .judge import check
+
+    facts = json.dumps({**f, "focus": focus} if focus else f)
+    notes = [{"agent": a, "claim": t.strip(), "source": "agent"} for a, t in await analysts(agents, facts) if t and t.strip()]
+    for n in notes:
+        problems = check(n, f)["unsupported"]
+        if problems:
+            fixed = (await ask(n["agent"], json.dumps({"instruction": REVISE, "facts": f, "your_note": n["claim"], "problems": problems}))).strip()
+            if fixed and not check({**n, "claim": fixed}, f)["unsupported"]:
+                n.update(claim=fixed, revised=problems)
+    if len(notes) > 1:
+        summary = (await ask("Coach Briefing", json.dumps({"facts": f, "notes": notes}))).strip()
+        if summary:
+            notes.insert(0, {"agent": "Coach Briefing", "claim": summary, "source": "agent"})
+    verdict = (await ask("Fact-checker", json.dumps({"facts": f, "notes": notes}))).strip().strip("`").removeprefix("json").strip()
     try:
         bad = json.loads(verdict)
     except ValueError:
         bad = [verdict]
     return notes + [{"agent": "Fact-checker", "claim": "Every claim matches the facts." if not bad else "Check: " + "; ".join(map(str, bad)), "source": "facts"}]
+
+
+def _prompt(name: str) -> str:
+    return {"Coach Briefing": COACH, "Fact-checker": CHECKER}.get(name) or INSTRUCTIONS[name] + " If the input holds an \"instruction\", follow it."
+
+
+async def agent_briefing(f: dict, agents: list[str] | None = None, focus: str = "") -> list[dict]:
+    """In-process agents on a Foundry model (Agent Framework). Verified live Oct 22 and Oct 27 (gpt-6-astra). The analysts run
+    through ConcurrentBuilder; the aggregated output carries one message per agent, keyed by author_name."""
+    from agent_framework.foundry import FoundryChatClient
+    from agent_framework.orchestrations import ConcurrentBuilder
+    from azure.identity import AzureCliCredential
+
+    client = FoundryChatClient(project_endpoint=os.environ["FOUNDRY_PROJECT_ENDPOINT"], model=os.environ["FOUNDRY_MODEL"], credential=AzureCliCredential())
+    agent = lambda n: client.as_agent(name=re.sub(r"[^A-Za-z]", "", n), instructions=_prompt(n) + RULES)
+
+    async def analysts(names: list[str], text: str) -> list[tuple[str, str]]:
+        team, by = [agent(n) for n in names], {re.sub(r"[^A-Za-z]", "", n): n for n in names}
+        if len(team) == 1:  # the concurrent fan-out needs two or more participants
+            return [(names[0], (await team[0].run(text)).text)]
+        events = await ConcurrentBuilder(participants=team).build().run(text)
+        return [(by[m.author_name], m.text) for r in events.get_outputs() for m in r.messages if m.author_name in by]
+
+    async def ask(name: str, text: str) -> str:
+        return (await agent(name).run(text)).text or ""
+
+    return await staff_flow(analysts, ask, f, agents or list(INSTRUCTIONS), focus)
